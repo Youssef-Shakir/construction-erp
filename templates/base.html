@@ -1,0 +1,65 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token }}">
+    <title>{% block title %}{% endblock %} | نظام المحاسبة</title>
+    <link rel="stylesheet" href="{% static 'css/output.css' %}">
+    {% block extra_css %}{% endblock %}
+</head>
+<body class="bg-gray-50 text-gray-900 text-sm">
+    {% if user.is_authenticated %}
+    <!-- Sidebar -->
+    {% include "partials/sidebar.html" %}
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <!-- Top Bar -->
+        <header class="bg-white border-b border-gray-200 px-6 py-3">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h1 class="text-lg font-semibold text-gray-900">{% block page_title %}{% endblock %}</h1>
+                    {% block breadcrumb %}{% endblock %}
+                </div>
+                <div class="flex items-center gap-4">
+                    <span class="text-sm text-gray-600">{{ user.get_full_name|default:user.email }}</span>
+                    <a href="{% url 'accounts:logout' %}" class="text-sm text-gray-500 hover:text-gray-700">خروج</a>
+                </div>
+            </div>
+        </header>
+
+        <!-- Messages -->
+        {% include "partials/messages.html" %}
+
+        <!-- Page Content -->
+        <div class="p-6">
+            {% block content %}{% endblock %}
+        </div>
+    </main>
+    {% else %}
+    <!-- Login/Public pages -->
+    <main class="min-h-screen flex items-center justify-center bg-gray-100">
+        {% block public_content %}{% endblock %}
+    </main>
+    {% endif %}
+
+    <!-- HTMX -->
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+
+    <!-- Keyboard shortcuts -->
+    <script>
+        document.addEventListener('keydown', function(e) {
+            // Ctrl+S to save forms
+            if (e.ctrlKey && e.key === 's') {
+                e.preventDefault();
+                const form = document.querySelector('form[data-autosave]');
+                if (form) form.submit();
+            }
+        });
+    </script>
+
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

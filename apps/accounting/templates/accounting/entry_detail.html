@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+
+{% block title %}{{ entry.entry_number }}{% endblock %}
+{% block page_title %}قيد يومية: {{ entry.entry_number }}{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl">
+    <!-- Entry header -->
+    <div class="flex items-center justify-between mb-4">
+        <div class="flex items-center gap-4">
+            {% if entry.is_reversed %}
+            <span class="badge badge-cancelled">ملغي</span>
+            {% elif entry.is_posted %}
+            <span class="badge badge-posted">مرحّل</span>
+            {% else %}
+            <span class="badge badge-draft">مسودة</span>
+            {% endif %}
+            <span class="text-gray-500">{{ entry.journal.name }}</span>
+        </div>
+        {% if entry.is_posted and not entry.is_reversed and user.is_superuser %}
+        <a href="{% url 'accounting:entry_reverse' entry.pk %}" class="btn btn-danger btn-sm">إلغاء القيد</a>
+        {% endif %}
+    </div>
+
+    <!-- Entry info -->
+    <div class="panel p-6 mb-6">
+        <dl class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+            <div>
+                <dt class="text-xs text-gray-500">التاريخ</dt>
+                <dd>{{ entry.date|date:"Y-m-d" }}</dd>
+            </div>
+            <div>
+                <dt class="text-xs text-gray-500">المرجع</dt>
+                <dd>{{ entry.reference|default:"-" }}</dd>
+            </div>
+            <div>
+                <dt class="text-xs text-gray-500">تاريخ الترحيل</dt>
+                <dd>{{ entry.posted_at|date:"Y-m-d H:i"|default:"-" }}</dd>
+            </div>
+            <div>
+                <dt class="text-xs text-gray-500">رُحّل بواسطة</dt>
+                <dd>{{ entry.posted_by.get_full_name|default:"-" }}</dd>
+            </div>
+        </dl>
+        {% if entry.memo %}
+        <div class="pt-4 border-t">
+            <dt class="text-xs text-gray-500 mb-1">البيان</dt>
+            <dd>{{ entry.memo }}</dd>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Entry lines -->
+    <div class="panel">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>الحساب</th>
+                    <th>الوصف</th>
+                    <th>الشريك</th>
+                    <th>المشروع</th>
+                    <th class="text-left">مدين</th>
+                    <th class="text-left">دائن</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for line in entry.lines.all %}
+                <tr>
+                    <td>{{ line.line_number }}</td>
+                    <td class="font-mono">{{ line.account.code }} - {{ line.account.name }}</td>
+                    <td>{{ line.description|default:"-" }}</td>
+                    <td>{{ line.partner.name|default:"-" }}</td>
+                    <td>{{ line.project.code|default:"-" }}</td>
+                    <td class="money">{% if line.debit > 0 %}{{ line.debit }}{% endif %}</td>
+                    <td class="money">{% if line.credit > 0 %}{{ line.credit }}{% endif %}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+            <tfoot class="bg-gray-50 font-semibold">
+                <tr>
+                    <td colspan="5" class="text-left">الإجمالي</td>
+                    <td class="money">{{ entry.total_debit }}</td>
+                    <td class="money">{{ entry.total_credit }}</td>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+
+    {% if entry.reversed_by %}
+    <div class="mt-4 alert alert-warning">
+        تم إلغاء هذا القيد بواسطة القيد
+        <a href="{% url 'accounting:entry_detail' entry.reversed_by.pk %}" class="font-mono underline">{{ entry.reversed_by.entry_number }}</a>
+    </div>
+    {% endif %}
+
+    {% if entry.reverses %}
+    <div class="mt-4 alert alert-info">
+        هذا القيد يلغي القيد
+        <a href="{% url 'accounting:entry_detail' entry.reverses.pk %}" class="font-mono underline">{{ entry.reverses.entry_number }}</a>
+    </div>
+    {% endif %}
+
+    <div class="mt-6">
+        <a href="{% url 'accounting:entries' %}" class="btn btn-secondary">العودة للقائمة</a>
+    </div>
+</div>
+{% endblock %}

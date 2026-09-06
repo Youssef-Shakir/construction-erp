@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+
+{% block title %}دفتر الأستاذ{% endblock %}
+{% block page_title %}دفتر الأستاذ{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl">
+    <!-- Filter form -->
+    <div class="panel p-4 mb-6">
+        <form method="get" class="flex items-end gap-4">
+            <div class="flex-1">
+                <label class="form-label">الحساب</label>
+                {{ form.account }}
+            </div>
+            <div>
+                <label class="form-label">من تاريخ</label>
+                {{ form.date_from }}
+            </div>
+            <div>
+                <label class="form-label">إلى تاريخ</label>
+                {{ form.date_to }}
+            </div>
+            <button type="submit" class="btn btn-primary">عرض</button>
+        </form>
+    </div>
+
+    {% if account %}
+    <!-- Account header -->
+    <div class="panel p-4 mb-4">
+        <h2 class="text-lg font-semibold">{{ account.code }} - {{ account.name }}</h2>
+        <p class="text-sm text-gray-500">{{ account.account_type.name }}</p>
+    </div>
+
+    <!-- Ledger entries -->
+    <div class="panel">
+        {% if lines %}
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>التاريخ</th>
+                    <th>رقم القيد</th>
+                    <th>اليومية</th>
+                    <th>الوصف</th>
+                    <th>الشريك</th>
+                    <th>المشروع</th>
+                    <th class="text-left">مدين</th>
+                    <th class="text-left">دائن</th>
+                    <th class="text-left">الرصيد</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for line in lines %}
+                <tr>
+                    <td>{{ line.entry.date|date:"Y-m-d" }}</td>
+                    <td>
+                        <a href="{% url 'accounting:entry_detail' line.entry.pk %}" class="text-primary-600 hover:underline font-mono">
+                            {{ line.entry.entry_number }}
+                        </a>
+                    </td>
+                    <td>{{ line.entry.journal.name }}</td>
+                    <td>{{ line.description|default:line.entry.memo|truncatechars:40 }}</td>
+                    <td>{{ line.partner.name|default:"-" }}</td>
+                    <td>{% if line.project %}{{ line.project.code }}{% else %}-{% endif %}</td>
+                    <td class="money">{% if line.debit > 0 %}{{ line.debit }}{% endif %}</td>
+                    <td class="money">{% if line.credit > 0 %}{{ line.credit }}{% endif %}</td>
+                    <td class="money font-semibold">
+                        {% with running_balance=running_balance|add:line.debit %}
+                        {% with running_balance=running_balance|add:line.credit|default:0 %}
+                        {{ running_balance }}
+                        {% endwith %}
+                        {% endwith %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div class="p-8 text-center text-gray-500">
+            <p>لا يوجد حركات</p>
+        </div>
+        {% endif %}
+    </div>
+    {% else %}
+    <div class="panel p-8 text-center text-gray-500">
+        <p>اختر حساب لعرض دفتر الأستاذ</p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

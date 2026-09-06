@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+
+{% block title %}السلف النقدية{% endblock %}
+{% block page_title %}السلف النقدية{% endblock %}
+
+{% block content %}
+<!-- Filter bar -->
+<div class="filter-bar mb-4">
+    <form method="get" class="flex items-center gap-4 flex-1">
+        <input type="text" name="q" value="{{ query }}" placeholder="بحث..." class="form-input w-64">
+        <select name="status" class="form-select w-32">
+            <option value="">كل الحالات</option>
+            <option value="draft" {% if status == 'draft' %}selected{% endif %}>مسودة</option>
+            <option value="posted" {% if status == 'posted' %}selected{% endif %}>مرحّل</option>
+            <option value="closed" {% if status == 'closed' %}selected{% endif %}>مغلق</option>
+            <option value="cancelled" {% if status == 'cancelled' %}selected{% endif %}>ملغي</option>
+        </select>
+        <button type="submit" class="btn btn-secondary">بحث</button>
+    </form>
+    <a href="{% url 'advances:create' %}" class="btn btn-primary">+ سلفة جديدة</a>
+</div>
+
+<!-- Advances table -->
+<div class="panel">
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>رقم السلفة</th>
+                <th>التاريخ</th>
+                <th>المشروع</th>
+                <th>المستلم</th>
+                <th class="text-left">المبلغ</th>
+                <th class="text-left">المتبقي</th>
+                <th>الحالة</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for advance in advances %}
+            <tr>
+                <td>
+                    <a href="{% url 'advances:detail' advance.pk %}" class="text-primary-600 hover:underline font-mono">
+                        {{ advance.advance_number }}
+                    </a>
+                </td>
+                <td>{{ advance.date|date:"Y-m-d" }}</td>
+                <td>{{ advance.project.name }}</td>
+                <td>{{ advance.recipient.name }}</td>
+                <td class="money">{{ advance.amount }}</td>
+                <td class="money {% if advance.remaining > 0 %}text-orange-600{% endif %}">{{ advance.remaining }}</td>
+                <td>
+                    {% if advance.status == 'draft' %}
+                    <span class="badge badge-draft">مسودة</span>
+                    {% elif advance.status == 'posted' %}
+                    <span class="badge badge-posted">مرحّل</span>
+                    {% elif advance.status == 'closed' %}
+                    <span class="badge badge-closed">مغلق</span>
+                    {% else %}
+                    <span class="badge badge-cancelled">ملغي</span>
+                    {% endif %}
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="7" class="text-center py-8 text-gray-500">لا يوجد سلف</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+{% include "partials/pagination.html" %}
+{% endblock %}

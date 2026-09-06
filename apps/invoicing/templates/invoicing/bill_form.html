@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title }}{% endblock %}
+{% block page_title %}{{ title }}{% endblock %}
+
+{% block breadcrumb %}
+<nav class="breadcrumb">
+    <a href="{% url 'dashboard:home' %}">الرئيسية</a>
+    <span class="separator">/</span>
+    <a href="{% url 'bills:list' %}">فواتير الموردين</a>
+    <span class="separator">/</span>
+    <span class="current">{% if bill %}{{ bill.bill_number }}{% else %}فاتورة مورد جديدة{% endif %}</span>
+</nav>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl">
+    <form method="post" enctype="multipart/form-data" class="form-card" data-autosave>
+        {% csrf_token %}
+
+        <div class="form-section">
+            <h3 class="form-section-title">معلومات الفاتورة</h3>
+
+            <div class="form-grid">
+                <div class="form-group">
+                    <label class="form-label">التاريخ <span class="text-red-500">*</span></label>
+                    {{ form.date }}
+                    {% if form.date.errors %}<p class="form-error">{{ form.date.errors.0 }}</p>{% endif %}
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">تاريخ الاستحقاق <span class="text-red-500">*</span></label>
+                    {{ form.due_date }}
+                    {% if form.due_date.errors %}<p class="form-error">{{ form.due_date.errors.0 }}</p>{% endif %}
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">المورد <span class="text-red-500">*</span></label>
+                    {{ form.supplier }}
+                    {% if form.supplier.errors %}<p class="form-error">{{ form.supplier.errors.0 }}</p>{% endif %}
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">حساب المصروف <span class="text-red-500">*</span></label>
+                    {{ form.account }}
+                    {% if form.account.errors %}<p class="form-error">{{ form.account.errors.0 }}</p>{% endif %}
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">المشروع (اختياري)</label>
+                    {{ form.project }}
+                    {% if form.project.errors %}<p class="form-error">{{ form.project.errors.0 }}</p>{% endif %}
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">المبلغ <span class="text-red-500">*</span></label>
+                    {{ form.amount }}
+                    {% if form.amount.errors %}<p class="form-error">{{ form.amount.errors.0 }}</p>{% endif %}
+                </div>
+
+                <div class="form-group col-span-2">
+                    <label class="form-label">مرجع المورد</label>
+                    {{ form.vendor_reference }}
+                    {% if form.vendor_reference.errors %}<p class="form-error">{{ form.vendor_reference.errors.0 }}</p>{% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="form-section">
+            <h3 class="form-section-title">الوصف</h3>
+
+            <div class="form-group">
+                {{ form.description }}
+                {% if form.description.errors %}<p class="form-error">{{ form.description.errors.0 }}</p>{% endif %}
+            </div>
+        </div>
+
+        <div class="form-section">
+            <h3 class="form-section-title">المرفقات</h3>
+
+            <div class="form-group">
+                <input type="file" name="attachments" multiple class="form-input">
+                <p class="text-xs text-gray-500 mt-1">يمكنك اختيار عدة ملفات</p>
+            </div>
+        </div>
+
+        <div class="form-actions">
+            <a href="{% url 'bills:list' %}" class="btn btn-secondary">إلغاء</a>
+            <button type="submit" class="btn btn-primary">
+                {% if bill %}تحديث{% else %}إنشاء{% endif %}
+            </button>
+        </div>
+    </form>
+</div>
+{% endblock %}

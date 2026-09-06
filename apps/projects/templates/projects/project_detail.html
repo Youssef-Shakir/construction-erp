@@ -1,0 +1,268 @@
+{% extends "base.html" %}
+
+{% block title %}{{ project.name }}{% endblock %}
+{% block page_title %}{{ project.code }} - {{ project.name }}{% endblock %}
+
+{% block content %}
+<!-- Project header -->
+<div class="flex items-center justify-between mb-4">
+    <div class="flex items-center gap-4">
+        {% if project.status == 'active' %}
+        <span class="badge badge-posted">نشط</span>
+        {% elif project.status == 'completed' %}
+        <span class="badge badge-closed">مكتمل</span>
+        {% elif project.status == 'on_hold' %}
+        <span class="badge badge-draft">معلق</span>
+        {% else %}
+        <span class="badge badge-cancelled">ملغي</span>
+        {% endif %}
+        <span class="text-gray-500">{{ project.customer.name }}</span>
+    </div>
+    <a href="{% url 'projects:edit' project.pk %}" class="btn btn-secondary">تعديل</a>
+</div>
+
+<!-- Financial strip -->
+<div class="financial-strip mb-6">
+    <div class="financial-strip-item">
+        <div class="financial-strip-label">الإيرادات</div>
+        <div class="financial-strip-value text-green-600 money">{{ project.total_revenue }}</div>
+    </div>
+    <div class="financial-strip-item">
+        <div class="financial-strip-label">المصروفات</div>
+        <div class="financial-strip-value text-red-600 money">{{ project.total_expenses }}</div>
+    </div>
+    <div class="financial-strip-item">
+        <div class="financial-strip-label">الفواتير</div>
+        <div class="financial-strip-value text-red-600 money">{{ project.total_bills }}</div>
+    </div>
+    <div class="financial-strip-item">
+        <div class="financial-strip-label">الهامش</div>
+        <div class="financial-strip-value {% if project.gross_margin >= 0 %}text-green-600{% else %}text-red-600{% endif %} money">{{ project.gross_margin }}</div>
+    </div>
+    <div class="financial-strip-item">
+        <div class="financial-strip-label">المستحقات</div>
+        <div class="financial-strip-value text-blue-600 money">{{ project.total_receivables }}</div>
+    </div>
+    <div class="financial-strip-item">
+        <div class="financial-strip-label">السلف المفتوحة</div>
+        <div class="financial-strip-value text-orange-600 money">{{ project.open_advances }}</div>
+    </div>
+</div>
+
+<!-- Project details -->
+<div class="panel p-6 mb-6">
+    <h3 class="font-semibold mb-4">تفاصيل المشروع</h3>
+    <dl class="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div>
+            <dt class="text-xs text-gray-500">تاريخ البدء</dt>
+            <dd>{{ project.start_date|date:"Y-m-d"|default:"-" }}</dd>
+        </div>
+        <div>
+            <dt class="text-xs text-gray-500">تاريخ الانتهاء</dt>
+            <dd>{{ project.end_date|date:"Y-m-d"|default:"-" }}</dd>
+        </div>
+        <div>
+            <dt class="text-xs text-gray-500">الميزانية</dt>
+            <dd class="money">{{ project.budget|default:"-" }}</dd>
+        </div>
+        <div>
+            <dt class="text-xs text-gray-500">تاريخ الإنشاء</dt>
+            <dd>{{ project.created_at|date:"Y-m-d" }}</dd>
+        </div>
+    </dl>
+    {% if project.description %}
+    <div class="mt-4 pt-4 border-t">
+        <dt class="text-xs text-gray-500 mb-1">الوصف</dt>
+        <dd class="text-gray-700">{{ project.description }}</dd>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Tabs for related documents -->
+<div class="panel">
+    <div class="tabs">
+        <button class="tab active" data-tab="invoices">الفواتير</button>
+        <button class="tab" data-tab="bills">فواتير الموردين</button>
+        <button class="tab" data-tab="expenses">المصروفات</button>
+        <button class="tab" data-tab="advances">السلف</button>
+        <button class="tab" data-tab="attachments">المرفقات</button>
+        <button class="tab" data-tab="history">السجل</button>
+    </div>
+
+    <!-- Invoices tab -->
+    <div id="tab-invoices" class="tab-content p-4">
+        {% if invoices %}
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>الرقم</th>
+                    <th>التاريخ</th>
+                    <th>العميل</th>
+                    <th class="text-left">المبلغ</th>
+                    <th class="text-left">المتبقي</th>
+                    <th>الحالة</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for inv in invoices %}
+                <tr>
+                    <td><a href="{% url 'invoicing:detail' inv.pk %}" class="text-primary-600 hover:underline font-mono">{{ inv.invoice_number }}</a></td>
+                    <td>{{ inv.date|date:"Y-m-d" }}</td>
+                    <td>{{ inv.customer.name }}</td>
+                    <td class="money">{{ inv.amount }}</td>
+                    <td class="money {% if inv.amount_remaining > 0 %}text-orange-600{% endif %}">{{ inv.amount_remaining }}</td>
+                    <td>
+                        {% if inv.status == 'posted' %}<span class="badge badge-posted">مرحّل</span>
+                        {% elif inv.status == 'draft' %}<span class="badge badge-draft">مسودة</span>
+                        {% else %}<span class="badge badge-cancelled">ملغي</span>{% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p class="text-gray-500 text-sm">لا يوجد فواتير</p>
+        {% endif %}
+    </div>
+
+    <!-- Bills tab -->
+    <div id="tab-bills" class="tab-content p-4 hidden">
+        {% if bills %}
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>الرقم</th>
+                    <th>التاريخ</th>
+                    <th>المورد</th>
+                    <th>الحساب</th>
+                    <th class="text-left">المبلغ</th>
+                    <th class="text-left">المتبقي</th>
+                    <th>الحالة</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for bill in bills %}
+                <tr>
+                    <td><a href="{% url 'bills:detail' bill.pk %}" class="text-primary-600 hover:underline font-mono">{{ bill.bill_number }}</a></td>
+                    <td>{{ bill.date|date:"Y-m-d" }}</td>
+                    <td>{{ bill.supplier.name }}</td>
+                    <td>{{ bill.account.name }}</td>
+                    <td class="money">{{ bill.amount }}</td>
+                    <td class="money {% if bill.amount_remaining > 0 %}text-orange-600{% endif %}">{{ bill.amount_remaining }}</td>
+                    <td>
+                        {% if bill.status == 'posted' %}<span class="badge badge-posted">مرحّل</span>
+                        {% elif bill.status == 'draft' %}<span class="badge badge-draft">مسودة</span>
+                        {% else %}<span class="badge badge-cancelled">ملغي</span>{% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p class="text-gray-500 text-sm">لا يوجد فواتير موردين</p>
+        {% endif %}
+    </div>
+
+    <!-- Expenses tab -->
+    <div id="tab-expenses" class="tab-content p-4 hidden">
+        {% if expenses %}
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>الرقم</th>
+                    <th>التاريخ</th>
+                    <th>الحساب</th>
+                    <th>السلفة</th>
+                    <th class="text-left">المبلغ</th>
+                    <th>الحالة</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for exp in expenses %}
+                <tr>
+                    <td><a href="{% url 'expenses:detail' exp.pk %}" class="text-primary-600 hover:underline font-mono">{{ exp.expense_number }}</a></td>
+                    <td>{{ exp.date|date:"Y-m-d" }}</td>
+                    <td>{{ exp.account.name }}</td>
+                    <td>{% if exp.advance %}<a href="{% url 'advances:detail' exp.advance.pk %}" class="text-primary-600 hover:underline">{{ exp.advance.advance_number }}</a>{% else %}-{% endif %}</td>
+                    <td class="money">{{ exp.amount }}</td>
+                    <td>
+                        {% if exp.status == 'posted' %}<span class="badge badge-posted">مرحّل</span>
+                        {% elif exp.status == 'draft' %}<span class="badge badge-draft">مسودة</span>
+                        {% else %}<span class="badge badge-cancelled">ملغي</span>{% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p class="text-gray-500 text-sm">لا يوجد مصروفات</p>
+        {% endif %}
+    </div>
+
+    <!-- Advances tab -->
+    <div id="tab-advances" class="tab-content p-4 hidden">
+        {% if advances %}
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>الرقم</th>
+                    <th>التاريخ</th>
+                    <th>المستلم</th>
+                    <th class="text-left">المبلغ</th>
+                    <th class="text-left">المتبقي</th>
+                    <th>الحالة</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for adv in advances %}
+                <tr>
+                    <td><a href="{% url 'advances:detail' adv.pk %}" class="text-primary-600 hover:underline font-mono">{{ adv.advance_number }}</a></td>
+                    <td>{{ adv.date|date:"Y-m-d" }}</td>
+                    <td>{{ adv.recipient.name }}</td>
+                    <td class="money">{{ adv.amount }}</td>
+                    <td class="money {% if adv.remaining > 0 %}text-orange-600{% endif %}">{{ adv.remaining }}</td>
+                    <td>
+                        {% if adv.status == 'posted' %}<span class="badge badge-posted">مرحّل</span>
+                        {% elif adv.status == 'closed' %}<span class="badge badge-closed">مغلق</span>
+                        {% elif adv.status == 'draft' %}<span class="badge badge-draft">مسودة</span>
+                        {% else %}<span class="badge badge-cancelled">ملغي</span>{% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p class="text-gray-500 text-sm">لا يوجد سلف</p>
+        {% endif %}
+    </div>
+
+    <!-- Attachments tab -->
+    <div id="tab-attachments" class="tab-content p-4 hidden">
+        {% include "partials/attachment_tab.html" %}
+    </div>
+
+    <!-- History tab -->
+    <div id="tab-history" class="tab-content p-4 hidden">
+        {% include "partials/history_tab.html" %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Tab switching
+document.querySelectorAll('.tab').forEach(tab => {
+    tab.addEventListener('click', function() {
+        // Remove active from all tabs
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        // Hide all tab content
+        document.querySelectorAll('.tab-content').forEach(c => c.classList.add('hidden'));
+
+        // Activate clicked tab
+        this.classList.add('active');
+        // Show corresponding content
+        document.getElementById('tab-' + this.dataset.tab).classList.remove('hidden');
+    });
+});
+</script>
+{% endblock %}

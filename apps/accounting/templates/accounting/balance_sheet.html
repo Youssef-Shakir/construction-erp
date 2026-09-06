@@ -1,0 +1,118 @@
+{% extends "base.html" %}
+
+{% block title %}الميزانية العمومية{% endblock %}
+{% block page_title %}الميزانية العمومية{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl">
+    <!-- Filter form -->
+    <div class="panel p-4 mb-6">
+        <form method="get" class="flex items-end gap-4">
+            <div>
+                <label class="form-label">حتى تاريخ</label>
+                {{ form.as_of_date }}
+            </div>
+            <button type="submit" class="btn btn-primary">عرض</button>
+        </form>
+    </div>
+
+    <p class="text-sm text-gray-500 mb-4">حتى تاريخ: {{ as_of_date|date:"Y-m-d" }}</p>
+
+    <div class="grid grid-cols-2 gap-6">
+        <!-- Assets -->
+        <div class="panel">
+            <div class="p-4 border-b bg-gray-50">
+                <h3 class="font-semibold text-lg">الأصول</h3>
+            </div>
+            <div class="p-4">
+                <table class="w-full">
+                    <tbody>
+                        {% for item in asset_data %}
+                        <tr>
+                            <td class="py-1">{{ item.account.code }} - {{ item.account.name }}</td>
+                            <td class="py-1 text-left money w-28">{{ item.balance }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="2" class="py-2 text-gray-500">لا يوجد</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                    <tfoot>
+                        <tr class="font-bold border-t">
+                            <td class="py-2">إجمالي الأصول</td>
+                            <td class="py-2 text-left money">{{ total_assets }}</td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+
+        <!-- Liabilities & Equity -->
+        <div class="panel">
+            <div class="p-4 border-b bg-gray-50">
+                <h3 class="font-semibold text-lg">الخصوم وحقوق الملكية</h3>
+            </div>
+            <div class="p-4">
+                <!-- Liabilities -->
+                <h4 class="font-semibold mb-2">الخصوم</h4>
+                <table class="w-full mb-4">
+                    <tbody>
+                        {% for item in liability_data %}
+                        <tr>
+                            <td class="py-1">{{ item.account.code }} - {{ item.account.name }}</td>
+                            <td class="py-1 text-left money w-28">{{ item.balance }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="2" class="py-2 text-gray-500">لا يوجد</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                    <tfoot>
+                        <tr class="font-semibold border-t">
+                            <td class="py-2">إجمالي الخصوم</td>
+                            <td class="py-2 text-left money">{{ total_liabilities }}</td>
+                        </tr>
+                    </tfoot>
+                </table>
+
+                <!-- Equity -->
+                <h4 class="font-semibold mb-2">حقوق الملكية</h4>
+                <table class="w-full">
+                    <tbody>
+                        {% for item in equity_data %}
+                        <tr>
+                            <td class="py-1">{{ item.account.code }} - {{ item.account.name }}</td>
+                            <td class="py-1 text-left money w-28">{{ item.balance }}</td>
+                        </tr>
+                        {% endfor %}
+                        <tr>
+                            <td class="py-1">الأرباح المحتجزة</td>
+                            <td class="py-1 text-left money {% if retained_earnings >= 0 %}text-green-600{% else %}text-red-600{% endif %}">
+                                {{ retained_earnings }}
+                            </td>
+                        </tr>
+                    </tbody>
+                    <tfoot>
+                        <tr class="font-semibold border-t">
+                            <td class="py-2">إجمالي حقوق الملكية</td>
+                            <td class="py-2 text-left money">{{ total_equity_with_retained }}</td>
+                        </tr>
+                        <tr class="font-bold border-t-2">
+                            <td class="py-2">إجمالي الخصوم وحقوق الملكية</td>
+                            <td class="py-2 text-left money">{{ total_liabilities_and_equity }}</td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    {% if total_assets != total_liabilities_and_equity %}
+    <div class="panel p-4 mt-4 bg-red-50 text-red-700">
+        <strong>تحذير:</strong> الميزانية غير متوازنة!
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

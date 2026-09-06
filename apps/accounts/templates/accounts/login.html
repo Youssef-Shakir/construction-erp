@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+
+{% block title %}تسجيل الدخول{% endblock %}
+
+{% block public_content %}
+<div class="w-full max-w-md">
+    <div class="panel p-8">
+        <div class="text-center mb-8">
+            <h1 class="text-2xl font-bold text-gray-900">نظام المحاسبة</h1>
+            <p class="text-sm text-gray-500 mt-2">إدارة المشاريع والحسابات</p>
+        </div>
+
+        {% if messages %}
+        <div class="mb-4">
+            {% for message in messages %}
+            <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <form method="post" class="space-y-4">
+            {% csrf_token %}
+
+            <div>
+                <label for="id_email" class="form-label">{{ form.email.label }}</label>
+                {{ form.email }}
+                {% if form.email.errors %}
+                <p class="text-red-600 text-xs mt-1">{{ form.email.errors.0 }}</p>
+                {% endif %}
+            </div>
+
+            <div>
+                <label for="id_password" class="form-label">{{ form.password.label }}</label>
+                {{ form.password }}
+                {% if form.password.errors %}
+                <p class="text-red-600 text-xs mt-1">{{ form.password.errors.0 }}</p>
+                {% endif %}
+            </div>
+
+            <button type="submit" class="btn btn-primary w-full">
+                تسجيل الدخول
+            </button>
+        </form>
+    </div>
+</div>
+{% endblock %}

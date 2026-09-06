@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python3:*)",
+      "Bash(python -m django:*)",
+      "Bash(python manage.py check:*)",
+      "Bash(source venv/bin/activate)",
+      "Bash(pip install:*)",
+      "Bash(python manage.py makemigrations:*)",
+      "Bash(python -m pytest:*)",
+      "Bash(DJANGO_SETTINGS_MODULE=config.dev_settings python manage.py makemigrations:*)",
+      "Bash(DJANGO_SETTINGS_MODULE=config.dev_settings python manage.py:*)",
+      "Bash(npm install:*)",
+      "Bash(npx tailwindcss:*)",
+      "Bash(python manage.py shell:*)"
+    ]
+  }
+}

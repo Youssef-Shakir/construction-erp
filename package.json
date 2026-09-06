@@ -1,0 +1,13 @@
+{
+  "name": "construction-erp",
+  "version": "1.0.0",
+  "description": "Construction ERP - Tailwind CSS build",
+  "scripts": {
+    "build:css": "tailwindcss -i ./static/css/input.css -o ./static/css/output.css",
+    "watch:css": "tailwindcss -i ./static/css/input.css -o ./static/css/output.css --watch",
+    "build": "npm run build:css -- --minify"
+  },
+  "devDependencies": {
+    "tailwindcss": "^3.4.19"
+  }
+}

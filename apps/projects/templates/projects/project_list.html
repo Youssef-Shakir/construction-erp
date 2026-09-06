@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+
+{% block title %}المشاريع{% endblock %}
+{% block page_title %}المشاريع{% endblock %}
+
+{% block content %}
+<!-- Filter bar -->
+<div class="filter-bar mb-4">
+    <form method="get" class="flex items-center gap-4 flex-1">
+        <input type="text" name="q" value="{{ query }}" placeholder="بحث بالرمز أو الاسم..." class="form-input w-64">
+        <select name="status" class="form-select w-40">
+            <option value="">كل الحالات</option>
+            <option value="active" {% if status == 'active' %}selected{% endif %}>نشط</option>
+            <option value="completed" {% if status == 'completed' %}selected{% endif %}>مكتمل</option>
+            <option value="on_hold" {% if status == 'on_hold' %}selected{% endif %}>معلق</option>
+            <option value="cancelled" {% if status == 'cancelled' %}selected{% endif %}>ملغي</option>
+        </select>
+        <button type="submit" class="btn btn-secondary">بحث</button>
+        {% if query or status %}
+        <a href="{% url 'projects:list' %}" class="text-sm text-gray-500 hover:text-gray-700">مسح</a>
+        {% endif %}
+    </form>
+    <a href="{% url 'projects:create' %}" class="btn btn-primary">+ إضافة مشروع</a>
+</div>
+
+<!-- Projects table -->
+<div class="panel">
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>الرمز</th>
+                <th>اسم المشروع</th>
+                <th>العميل</th>
+                <th>الحالة</th>
+                <th>تاريخ البدء</th>
+                <th class="text-left">الميزانية</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for project in projects %}
+            <tr>
+                <td class="font-mono">{{ project.code }}</td>
+                <td>
+                    <a href="{% url 'projects:detail' project.pk %}" class="text-primary-600 hover:underline font-medium">
+                        {{ project.name }}
+                    </a>
+                </td>
+                <td>{{ project.customer.name }}</td>
+                <td>
+                    {% if project.status == 'active' %}
+                    <span class="badge badge-posted">نشط</span>
+                    {% elif project.status == 'completed' %}
+                    <span class="badge badge-closed">مكتمل</span>
+                    {% elif project.status == 'on_hold' %}
+                    <span class="badge badge-draft">معلق</span>
+                    {% else %}
+                    <span class="badge badge-cancelled">ملغي</span>
+                    {% endif %}
+                </td>
+                <td>{{ project.start_date|date:"Y-m-d"|default:"-" }}</td>
+                <td class="money">{{ project.budget|default:"-" }}</td>
+                <td>
+                    <a href="{% url 'projects:edit' project.pk %}" class="text-sm text-gray-500 hover:text-gray-700">تعديل</a>
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="7" class="text-center py-8 text-gray-500">لا يوجد مشاريع</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+{% include "partials/pagination.html" %}
+{% endblock %}

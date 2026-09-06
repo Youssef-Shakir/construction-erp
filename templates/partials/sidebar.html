@@ -1,0 +1,143 @@
+{% load static %}
+<aside class="sidebar">
+    <!-- Logo -->
+    <div class="px-4 py-4 border-b border-gray-700">
+        <h2 class="text-lg font-bold text-white">نظام المحاسبة</h2>
+        <p class="text-xs text-gray-400">إدارة المشاريع والحسابات</p>
+    </div>
+
+    <!-- Navigation -->
+    <nav class="py-4">
+        <!-- Main -->
+        <a href="{% url 'dashboard:home' %}" class="sidebar-link {% if request.resolver_match.url_name == 'home' and request.resolver_match.namespace == 'dashboard' %}active{% endif %}">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+            <span>لوحة التحكم</span>
+        </a>
+
+        <a href="{% url 'projects:list' %}" class="sidebar-link {% if request.resolver_match.namespace == 'projects' %}active{% endif %}">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>
+            <span>المشاريع</span>
+        </a>
+
+        <div class="my-2 border-t border-gray-700"></div>
+
+        <!-- Documents -->
+        <a href="{% url 'advances:list' %}" class="sidebar-link {% if request.resolver_match.namespace == 'advances' %}active{% endif %}">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+            <span>السلف</span>
+        </a>
+
+        <a href="{% url 'expenses:list' %}" class="sidebar-link {% if request.resolver_match.namespace == 'expenses' %}active{% endif %}">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 14l6-6m-5.5.5h.01m4.99 5h.01M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16l3.5-2 3.5 2 3.5-2 3.5 2z"/></svg>
+            <span>المصروفات</span>
+        </a>
+
+        <div class="my-2 border-t border-gray-700"></div>
+
+        <!-- Invoices & Bills -->
+        <a href="{% url 'invoicing:list' %}" class="sidebar-link {% if request.resolver_match.namespace == 'invoicing' %}active{% endif %}">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+            <span>الفواتير</span>
+        </a>
+
+        <a href="{% url 'bills:list' %}" class="sidebar-link {% if request.resolver_match.namespace == 'bills' %}active{% endif %}">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+            <span>فواتير الموردين</span>
+        </a>
+
+        <a href="{% url 'payments:list' %}" class="sidebar-link {% if request.resolver_match.namespace == 'payments' %}active{% endif %}">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg>
+            <span>المدفوعات</span>
+        </a>
+
+        <div class="my-2 border-t border-gray-700"></div>
+
+        <!-- Receivables / Payables -->
+        <a href="{% url 'accounting:receivables' %}" class="sidebar-link {% if request.resolver_match.url_name == 'receivables' %}active{% endif %}">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+            <span>المستحقات</span>
+        </a>
+
+        <a href="{% url 'accounting:payables' %}" class="sidebar-link {% if request.resolver_match.url_name == 'payables' %}active{% endif %}">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2z"/></svg>
+            <span>الالتزامات</span>
+        </a>
+
+        <div class="my-2 border-t border-gray-700"></div>
+
+        <!-- Documents -->
+        <a href="{% url 'core:documents' %}" class="sidebar-link {% if request.resolver_match.url_name == 'documents' %}active{% endif %}">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
+            <span>المستندات</span>
+        </a>
+
+        <div class="my-2 border-t border-gray-700"></div>
+
+        <!-- Financial Reports -->
+        <div class="sidebar-section">التقارير المالية</div>
+
+        <a href="{% url 'accounting:income_statement' %}" class="sidebar-link {% if request.resolver_match.url_name == 'income_statement' %}active{% endif %}">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+            <span>قائمة الدخل</span>
+        </a>
+
+        <a href="{% url 'accounting:balance_sheet' %}" class="sidebar-link {% if request.resolver_match.url_name == 'balance_sheet' %}active{% endif %}">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3"/></svg>
+            <span>الميزانية العمومية</span>
+        </a>
+
+        <div class="my-2 border-t border-gray-700"></div>
+
+        <!-- Accounting -->
+        <div class="sidebar-section">المحاسبة</div>
+
+        {% if user.is_superuser %}
+        <a href="{% url 'accounting:accounts' %}" class="sidebar-link {% if request.resolver_match.url_name == 'accounts' %}active{% endif %}">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4"/></svg>
+            <span>دليل الحسابات</span>
+        </a>
+
+        <a href="{% url 'accounting:journals' %}" class="sidebar-link {% if request.resolver_match.url_name == 'journals' %}active{% endif %}">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
+            <span>اليوميات</span>
+        </a>
+        {% endif %}
+
+        <a href="{% url 'accounting:entries' %}" class="sidebar-link {% if request.resolver_match.url_name == 'entries' or request.resolver_match.url_name == 'entry_create' %}active{% endif %}">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+            <span>القيود اليومية</span>
+        </a>
+
+        <a href="{% url 'accounting:ledger' %}" class="sidebar-link {% if request.resolver_match.url_name == 'ledger' %}active{% endif %}">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+            <span>دفتر الأستاذ</span>
+        </a>
+
+        <a href="{% url 'accounting:trial_balance' %}" class="sidebar-link {% if request.resolver_match.url_name == 'trial_balance' %}active{% endif %}">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3"/></svg>
+            <span>ميزان المراجعة</span>
+        </a>
+
+        {% if user.is_superuser %}
+        <div class="my-2 border-t border-gray-700"></div>
+
+        <!-- Settings -->
+        <div class="sidebar-section">الإعدادات</div>
+
+        <a href="{% url 'core:company_settings' %}" class="sidebar-link {% if request.resolver_match.url_name == 'company_settings' %}active{% endif %}">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>
+            <span>إعدادات الشركة</span>
+        </a>
+
+        <a href="{% url 'core:partners' %}" class="sidebar-link {% if request.resolver_match.url_name == 'partners' %}active{% endif %}">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+            <span>الشركاء</span>
+        </a>
+
+        <a href="{% url 'accounts:users' %}" class="sidebar-link {% if request.resolver_match.url_name == 'users' %}active{% endif %}">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
+            <span>المستخدمين</span>
+        </a>
+        {% endif %}
+    </nav>
+</aside>

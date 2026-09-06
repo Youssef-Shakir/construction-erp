@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <title>طباعة فاتورة {{ invoice.invoice_number }}</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: Arial, sans-serif;
+            font-size: 12pt;
+            line-height: 1.6;
+            color: #333;
+            direction: rtl;
+            padding: 40px;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            border-bottom: 3px solid #1a1a1a;
+            padding-bottom: 20px;
+            margin-bottom: 30px;
+        }
+        .company-info h1 {
+            font-size: 28pt;
+            color: #1a1a1a;
+            margin-bottom: 5px;
+        }
+        .company-info p {
+            font-size: 10pt;
+            color: #666;
+        }
+        .invoice-info {
+            text-align: left;
+        }
+        .invoice-number {
+            font-size: 20pt;
+            font-weight: bold;
+            color: #0066cc;
+        }
+        .invoice-meta {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+        .meta-box {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+        }
+        .meta-box h3 {
+            font-size: 11pt;
+            text-transform: uppercase;
+            color: #666;
+            margin-bottom: 15px;
+            border-bottom: 1px solid #ddd;
+            padding-bottom: 8px;
+        }
+        .meta-box p {
+            margin: 8px 0;
+        }
+        .meta-box strong {
+            display: inline-block;
+            width: 100px;
+            color: #444;
+        }
+        .description {
+            background: #f8f9fa;
+            padding: 20px;
+            margin-bottom: 30px;
+            border-radius: 8px;
+        }
+        .description h3 {
+            font-size: 11pt;
+            text-transform: uppercase;
+            color: #666;
+            margin-bottom: 10px;
+        }
+        .amount-section {
+            background: linear-gradient(135deg, #0066cc, #004499);
+            color: white;
+            padding: 30px;
+            text-align: center;
+            margin-bottom: 30px;
+            border-radius: 8px;
+        }
+        .amount-section .label {
+            font-size: 12pt;
+            margin-bottom: 10px;
+            opacity: 0.9;
+        }
+        .amount-section .amount {
+            font-size: 36pt;
+            font-weight: bold;
+        }
+        .amount-section .currency {
+            font-size: 16pt;
+            margin-right: 10px;
+        }
+        .payment-status {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 40px;
+        }
+        .status-box {
+            padding: 15px;
+            text-align: center;
+            border-radius: 8px;
+            background: #f8f9fa;
+        }
+        .status-box .label {
+            font-size: 10pt;
+            color: #666;
+            margin-bottom: 5px;
+        }
+        .status-box .value {
+            font-size: 18pt;
+            font-weight: bold;
+        }
+        .status-box.total { background: #e3f2fd; }
+        .status-box.paid { background: #e8f5e9; }
+        .status-box.paid .value { color: #22c55e; }
+        .status-box.remaining { background: #fff3e0; }
+        .status-box.remaining .value { color: #f97316; }
+        .signatures {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 60px;
+            margin-top: 80px;
+        }
+        .signature-box {
+            text-align: center;
+        }
+        .signature-line {
+            border-top: 2px solid #333;
+            margin-top: 60px;
+            padding-top: 10px;
+            font-weight: bold;
+        }
+        .footer {
+            margin-top: 60px;
+            padding-top: 20px;
+            border-top: 1px solid #ddd;
+            text-align: center;
+            font-size: 9pt;
+            color: #666;
+        }
+        .no-print {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            z-index: 1000;
+        }
+        .btn {
+            display: inline-block;
+            padding: 10px 20px;
+            background: #0066cc;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            text-decoration: none;
+            margin-left: 10px;
+        }
+        .btn:hover {
+            background: #0055aa;
+        }
+        .btn-secondary {
+            background: #666;
+        }
+        .btn-secondary:hover {
+            background: #555;
+        }
+        @media print {
+            body { padding: 20px; }
+            .no-print { display: none !important; }
+        }
+    </style>
+</head>
+<body>
+    <div class="no-print">
+        <button class="btn" onclick="window.print()">طباعة</button>
+        <a href="{% url 'invoicing:pdf' invoice.pk %}" class="btn">تحميل PDF</a>
+        <a href="{% url 'invoicing:detail' invoice.pk %}" class="btn btn-secondary">رجوع</a>
+    </div>
+
+    <div class="header">
+        <div class="company-info">
+            <h1>{{ company.name }}</h1>
+            {% if company.address %}<p>{{ company.address }}</p>{% endif %}
+            {% if company.phone %}<p>هاتف: {{ company.phone }}</p>{% endif %}
+            {% if company.tax_number %}<p>الرقم الضريبي: {{ company.tax_number }}</p>{% endif %}
+        </div>
+        <div class="invoice-info">
+            <div class="invoice-number">{{ invoice.invoice_number }}</div>
+            <p>فاتورة ضريبية</p>
+        </div>
+    </div>
+
+    <div class="invoice-meta">
+        <div class="meta-box">
+            <h3>معلومات العميل</h3>
+            <p><strong>الاسم:</strong> {{ invoice.customer.name }}</p>
+            {% if invoice.customer.address %}<p><strong>العنوان:</strong> {{ invoice.customer.address }}</p>{% endif %}
+            {% if invoice.customer.phone %}<p><strong>الهاتف:</strong> {{ invoice.customer.phone }}</p>{% endif %}
+            {% if invoice.customer.tax_number %}<p><strong>الرقم الضريبي:</strong> {{ invoice.customer.tax_number }}</p>{% endif %}
+        </div>
+        <div class="meta-box">
+            <h3>معلومات الفاتورة</h3>
+            <p><strong>التاريخ:</strong> {{ invoice.date|date:"Y-m-d" }}</p>
+            <p><strong>الاستحقاق:</strong> {{ invoice.due_date|date:"Y-m-d" }}</p>
+            <p><strong>المشروع:</strong> {{ invoice.project.name }}</p>
+            <p><strong>الحالة:</strong>
+                {% if invoice.status == 'draft' %}مسودة{% elif invoice.status == 'posted' %}مرحّل{% else %}ملغي{% endif %}
+            </p>
+        </div>
+    </div>
+
+    <div class="description">
+        <h3>الوصف</h3>
+        <p>{{ invoice.description }}</p>
+    </div>
+
+    <div class="amount-section">
+        <div class="label">إجمالي المبلغ</div>
+        <div class="amount">
+            <span class="currency">{{ company.currency_symbol }}</span>
+            {{ invoice.amount }}
+        </div>
+    </div>
+
+    {% if invoice.status == 'posted' %}
+    <div class="payment-status">
+        <div class="status-box total">
+            <div class="label">إجمالي الفاتورة</div>
+            <div class="value">{{ invoice.amount }}</div>
+        </div>
+        <div class="status-box paid">
+            <div class="label">المدفوع</div>
+            <div class="value">{{ invoice.amount_paid }}</div>
+        </div>
+        <div class="status-box remaining">
+            <div class="label">المتبقي</div>
+            <div class="value">{{ invoice.amount_remaining }}</div>
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="signatures">
+        <div class="signature-box">
+            <div class="signature-line">توقيع المستلم</div>
+        </div>
+        <div class="signature-box">
+            <div class="signature-line">توقيع المدير المالي</div>
+        </div>
+    </div>
+
+    <div class="footer">
+        <p>{{ company.name }} | {{ company.phone }} | {{ company.email }}</p>
+        <p>شكراً لتعاملكم معنا</p>
+    </div>
+</body>
+</html>

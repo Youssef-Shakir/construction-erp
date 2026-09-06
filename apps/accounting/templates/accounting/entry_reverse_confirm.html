@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+
+{% block title %}إلغاء قيد{% endblock %}
+{% block page_title %}إلغاء قيد: {{ entry.entry_number }}{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl">
+    <div class="panel p-6">
+        <div class="mb-6">
+            <p class="text-red-600 font-semibold mb-4">
+                هل أنت متأكد من إلغاء هذا القيد؟
+            </p>
+            <p class="text-gray-600">
+                سيتم إنشاء قيد عكسي لإلغاء تأثير هذا القيد.
+                القيد الأصلي سيبقى في السجل ولن يتم حذفه.
+            </p>
+        </div>
+
+        <!-- Entry details -->
+        <div class="bg-gray-50 p-4 rounded mb-6">
+            <dl class="grid grid-cols-2 gap-4">
+                <div>
+                    <dt class="text-xs text-gray-500">رقم القيد</dt>
+                    <dd class="font-mono">{{ entry.entry_number }}</dd>
+                </div>
+                <div>
+                    <dt class="text-xs text-gray-500">التاريخ</dt>
+                    <dd>{{ entry.date|date:"Y-m-d" }}</dd>
+                </div>
+                <div>
+                    <dt class="text-xs text-gray-500">اليومية</dt>
+                    <dd>{{ entry.journal.name }}</dd>
+                </div>
+                <div>
+                    <dt class="text-xs text-gray-500">الملاحظات</dt>
+                    <dd>{{ entry.memo|default:"-" }}</dd>
+                </div>
+            </dl>
+        </div>
+
+        <!-- Entry lines -->
+        <table class="data-table mb-6">
+            <thead>
+                <tr>
+                    <th>الحساب</th>
+                    <th class="text-left">مدين</th>
+                    <th class="text-left">دائن</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for line in entry.lines.all %}
+                <tr>
+                    <td>{{ line.account.code }} - {{ line.account.name }}</td>
+                    <td class="money">{% if line.debit > 0 %}{{ line.debit }}{% endif %}</td>
+                    <td class="money">{% if line.credit > 0 %}{{ line.credit }}{% endif %}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <div class="flex items-center justify-between">
+            <a href="{% url 'accounting:entry_detail' entry.pk %}" class="btn btn-secondary">إلغاء</a>
+            <form method="post">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-primary bg-red-600 hover:bg-red-700">
+                    تأكيد الإلغاء
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+
+{% block title %}الملف الشخصي{% endblock %}
+{% block page_title %}الملف الشخصي{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl">
+    <!-- User info -->
+    <div class="panel p-6 mb-6">
+        <h2 class="text-lg font-semibold mb-4">معلومات الحساب</h2>
+        <dl class="grid grid-cols-2 gap-4">
+            <div>
+                <dt class="text-xs text-gray-500">الاسم</dt>
+                <dd class="font-medium">{{ request.user.get_full_name }}</dd>
+            </div>
+            <div>
+                <dt class="text-xs text-gray-500">البريد الإلكتروني</dt>
+                <dd>{{ request.user.email }}</dd>
+            </div>
+            <div>
+                <dt class="text-xs text-gray-500">الصلاحية</dt>
+                <dd>{{ request.user.get_role_display }}</dd>
+            </div>
+            <div>
+                <dt class="text-xs text-gray-500">تاريخ الانضمام</dt>
+                <dd>{{ request.user.date_joined|date:"Y-m-d" }}</dd>
+            </div>
+        </dl>
+    </div>
+
+    <!-- Change password -->
+    <div class="panel p-6">
+        <h2 class="text-lg font-semibold mb-4">تغيير كلمة المرور</h2>
+        <form method="post" class="space-y-4">
+            {% csrf_token %}
+
+            {% if form.non_field_errors %}
+            <div class="alert alert-error">
+                {% for error in form.non_field_errors %}
+                {{ error }}
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            <div>
+                <label for="id_password" class="form-label">{{ form.password.label }}</label>
+                {{ form.password }}
+                {% if form.password.errors %}
+                <p class="text-red-600 text-xs mt-1">{{ form.password.errors.0 }}</p>
+                {% endif %}
+            </div>
+
+            <div>
+                <label for="id_password_confirm" class="form-label">{{ form.password_confirm.label }}</label>
+                {{ form.password_confirm }}
+                {% if form.password_confirm.errors %}
+                <p class="text-red-600 text-xs mt-1">{{ form.password_confirm.errors.0 }}</p>
+                {% endif %}
+            </div>
+
+            <div class="flex items-center justify-end pt-4 border-t">
+                <button type="submit" class="btn btn-primary">تغيير كلمة المرور</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

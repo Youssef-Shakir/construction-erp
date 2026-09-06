@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+
+{% block title %}ميزان المراجعة{% endblock %}
+{% block page_title %}ميزان المراجعة{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl">
+    <!-- Filter form -->
+    <div class="panel p-4 mb-6">
+        <form method="get" class="flex items-end gap-4">
+            <div>
+                <label class="form-label">حتى تاريخ</label>
+                {{ form.as_of_date }}
+            </div>
+            <button type="submit" class="btn btn-primary">عرض</button>
+        </form>
+    </div>
+
+    {% if as_of_date %}
+    <p class="text-sm text-gray-500 mb-4">حتى تاريخ: {{ as_of_date|date:"Y-m-d" }}</p>
+    {% endif %}
+
+    <!-- Trial balance table -->
+    <div class="panel">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>رمز الحساب</th>
+                    <th>اسم الحساب</th>
+                    <th class="text-left">مدين</th>
+                    <th class="text-left">دائن</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in data.accounts %}
+                <tr>
+                    <td class="font-mono">{{ item.account.code }}</td>
+                    <td>{{ item.account.name }}</td>
+                    <td class="money">{% if item.debit > 0 %}{{ item.debit }}{% endif %}</td>
+                    <td class="money">{% if item.credit > 0 %}{{ item.credit }}{% endif %}</td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="4" class="text-center text-gray-500 py-8">لا يوجد بيانات</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+            <tfoot class="bg-gray-50 font-semibold">
+                <tr>
+                    <td colspan="2" class="text-left">الإجمالي</td>
+                    <td class="money">{{ data.total_debit }}</td>
+                    <td class="money">{{ data.total_credit }}</td>
+                </tr>
+            </tfoot>
+        </table>
+
+        {% if data.total_debit != data.total_credit %}
+        <div class="p-4 bg-red-50 text-red-700">
+            <strong>تحذير:</strong> ميزان المراجعة غير متوازن!
+            الفرق: {{ data.total_debit|add:data.total_credit|default:0 }}
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

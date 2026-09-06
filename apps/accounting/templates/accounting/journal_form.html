@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title }}{% endblock %}
+{% block page_title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl">
+    <form method="post" class="panel p-6" data-autosave>
+        {% csrf_token %}
+
+        <div class="grid grid-cols-2 gap-4 mb-6">
+            <div>
+                <label class="form-label">رمز اليومية</label>
+                {{ form.code }}
+                {% if form.code.errors %}<p class="form-error">{{ form.code.errors.0 }}</p>{% endif %}
+            </div>
+
+            <div>
+                <label class="form-label">اسم اليومية</label>
+                {{ form.name }}
+                {% if form.name.errors %}<p class="form-error">{{ form.name.errors.0 }}</p>{% endif %}
+            </div>
+
+            <div>
+                <label class="form-label">النوع</label>
+                {{ form.type }}
+                {% if form.type.errors %}<p class="form-error">{{ form.type.errors.0 }}</p>{% endif %}
+            </div>
+
+            <div class="flex items-center pt-6">
+                <label class="flex items-center gap-2">
+                    {{ form.is_active }}
+                    <span>نشطة</span>
+                </label>
+            </div>
+
+            <div>
+                <label class="form-label">الحساب المدين الافتراضي</label>
+                {{ form.default_debit_account }}
+                {% if form.default_debit_account.errors %}<p class="form-error">{{ form.default_debit_account.errors.0 }}</p>{% endif %}
+            </div>
+
+            <div>
+                <label class="form-label">الحساب الدائن الافتراضي</label>
+                {{ form.default_credit_account }}
+                {% if form.default_credit_account.errors %}<p class="form-error">{{ form.default_credit_account.errors.0 }}</p>{% endif %}
+            </div>
+        </div>
+
+        <div class="flex items-center justify-between pt-4 border-t">
+            <a href="{% url 'accounting:journals' %}" class="btn btn-secondary">إلغاء</a>
+            <button type="submit" class="btn btn-primary">
+                {% if journal %}تحديث{% else %}إنشاء{% endif %}
+            </button>
+        </div>
+    </form>
+</div>
+{% endblock %}

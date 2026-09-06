@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+
+{% block title %}الشركاء{% endblock %}
+{% block page_title %}الشركاء{% endblock %}
+
+{% block content %}
+<!-- Filter bar -->
+<div class="filter-bar mb-4">
+    <form method="get" class="flex items-center gap-4 flex-1">
+        <input type="text" name="q" value="{{ query }}" placeholder="بحث..." class="form-input w-64">
+        <select name="type" class="form-select w-40">
+            <option value="">كل الأنواع</option>
+            <option value="customer" {% if partner_type == 'customer' %}selected{% endif %}>عملاء</option>
+            <option value="supplier" {% if partner_type == 'supplier' %}selected{% endif %}>موردين</option>
+            <option value="employee" {% if partner_type == 'employee' %}selected{% endif %}>موظفين</option>
+        </select>
+        <button type="submit" class="btn btn-secondary">بحث</button>
+        {% if query or partner_type %}
+        <a href="{% url 'core:partners' %}" class="text-sm text-gray-500 hover:text-gray-700">مسح</a>
+        {% endif %}
+    </form>
+    <a href="{% url 'core:partner_create' %}" class="btn btn-primary">+ إضافة شريك</a>
+</div>
+
+<!-- Partners table -->
+<div class="panel">
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>الرمز</th>
+                <th>الاسم</th>
+                <th>النوع</th>
+                <th>الهاتف</th>
+                <th>البريد الإلكتروني</th>
+                <th>الحالة</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for partner in partners %}
+            <tr>
+                <td class="font-mono">{{ partner.code }}</td>
+                <td>
+                    <a href="{% url 'core:partner_detail' partner.pk %}" class="text-primary-600 hover:underline">
+                        {{ partner.name }}
+                    </a>
+                </td>
+                <td>{{ partner.get_type_display_ar }}</td>
+                <td>{{ partner.phone|default:"-" }}</td>
+                <td>{{ partner.email|default:"-" }}</td>
+                <td>
+                    {% if partner.is_active %}
+                    <span class="badge badge-posted">نشط</span>
+                    {% else %}
+                    <span class="badge badge-cancelled">غير نشط</span>
+                    {% endif %}
+                </td>
+                <td>
+                    <a href="{% url 'core:partner_edit' partner.pk %}" class="text-sm text-gray-500 hover:text-gray-700">تعديل</a>
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="7" class="text-center py-8 text-gray-500">لا يوجد شركاء</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

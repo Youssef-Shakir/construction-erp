@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+
+{% block title %}القيود اليومية{% endblock %}
+{% block page_title %}القيود اليومية{% endblock %}
+
+{% block content %}
+<!-- Filter bar -->
+<div class="filter-bar mb-4">
+    <form method="get" class="flex items-center gap-4 flex-1">
+        <input type="text" name="q" value="{{ query }}" placeholder="بحث..." class="form-input w-64">
+        <select name="journal" class="form-select w-40">
+            <option value="">كل اليوميات</option>
+            {% for j in journals %}
+            <option value="{{ j.pk }}" {% if journal_id == j.pk|stringformat:"i" %}selected{% endif %}>{{ j.name }}</option>
+            {% endfor %}
+        </select>
+        <select name="status" class="form-select w-32">
+            <option value="">الكل</option>
+            <option value="posted" {% if status == 'posted' %}selected{% endif %}>مرحّل</option>
+            <option value="reversed" {% if status == 'reversed' %}selected{% endif %}>ملغي</option>
+            <option value="draft" {% if status == 'draft' %}selected{% endif %}>مسودة</option>
+        </select>
+        <button type="submit" class="btn btn-secondary">بحث</button>
+    </form>
+    <a href="{% url 'accounting:entry_create' %}" class="btn btn-primary">+ قيد جديد</a>
+</div>
+
+<!-- Entries table -->
+<div class="panel">
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>رقم القيد</th>
+                <th>التاريخ</th>
+                <th>اليومية</th>
+                <th>البيان</th>
+                <th class="text-left">مدين</th>
+                <th class="text-left">دائن</th>
+                <th>الحالة</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for entry in entries %}
+            <tr>
+                <td>
+                    <a href="{% url 'accounting:entry_detail' entry.pk %}" class="text-primary-600 hover:underline font-mono">
+                        {{ entry.entry_number }}
+                    </a>
+                </td>
+                <td>{{ entry.date|date:"Y-m-d" }}</td>
+                <td>{{ entry.journal.name }}</td>
+                <td class="truncate max-w-xs">{{ entry.memo|default:entry.reference|default:"-" }}</td>
+                <td class="money">{{ entry.total_debit }}</td>
+                <td class="money">{{ entry.total_credit }}</td>
+                <td>
+                    {% if entry.is_reversed %}
+                    <span class="badge badge-cancelled">ملغي</span>
+                    {% elif entry.is_posted %}
+                    <span class="badge badge-posted">مرحّل</span>
+                    {% else %}
+                    <span class="badge badge-draft">مسودة</span>
+                    {% endif %}
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="7" class="text-center py-8 text-gray-500">لا يوجد قيود</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+{% include "partials/pagination.html" %}
+{% endblock %}

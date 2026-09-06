@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+
+{% block title %}المستحقات{% endblock %}
+{% block page_title %}المستحقات (الذمم المدينة){% endblock %}
+
+{% block content %}
+<div class="max-w-5xl">
+    <!-- Summary -->
+    <div class="grid grid-cols-2 gap-4 mb-6">
+        <div class="panel p-4 text-center">
+            <div class="text-sm text-gray-500 mb-1">إجمالي المستحقات</div>
+            <div class="text-2xl font-bold text-blue-600 money">{{ total_outstanding }}</div>
+        </div>
+        <div class="panel p-4 text-center">
+            <div class="text-sm text-gray-500 mb-1">المتأخرة</div>
+            <div class="text-2xl font-bold text-red-600 money">{{ total_overdue }}</div>
+        </div>
+    </div>
+
+    <!-- Outstanding invoices -->
+    <div class="panel">
+        <div class="p-4 border-b bg-gray-50">
+            <h3 class="font-semibold">الفواتير المستحقة</h3>
+        </div>
+        {% if outstanding %}
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>رقم الفاتورة</th>
+                    <th>التاريخ</th>
+                    <th>الاستحقاق</th>
+                    <th>العميل</th>
+                    <th>المشروع</th>
+                    <th class="text-left">إجمالي الفاتورة</th>
+                    <th class="text-left">المتبقي</th>
+                    <th>الحالة</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in outstanding %}
+                <tr class="{% if item.is_overdue %}bg-red-50{% endif %}">
+                    <td>
+                        <a href="{% url 'invoicing:detail' item.invoice.pk %}" class="text-primary-600 hover:underline font-mono">
+                            {{ item.invoice.invoice_number }}
+                        </a>
+                    </td>
+                    <td>{{ item.invoice.date|date:"Y-m-d" }}</td>
+                    <td class="{% if item.is_overdue %}text-red-600 font-semibold{% endif %}">
+                        {{ item.invoice.due_date|date:"Y-m-d" }}
+                    </td>
+                    <td>{{ item.invoice.customer.name }}</td>
+                    <td>
+                        <a href="{% url 'projects:detail' item.invoice.project.pk %}" class="text-primary-600 hover:underline">
+                            {{ item.invoice.project.code }}
+                        </a>
+                    </td>
+                    <td class="money">{{ item.invoice.amount }}</td>
+                    <td class="money font-semibold">{{ item.remaining }}</td>
+                    <td>
+                        {% if item.is_overdue %}
+                        <span class="badge badge-overdue">متأخر</span>
+                        {% else %}
+                        <span class="badge badge-posted">مستحق</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div class="p-8 text-center text-gray-500">
+            <p>لا يوجد فواتير مستحقة</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

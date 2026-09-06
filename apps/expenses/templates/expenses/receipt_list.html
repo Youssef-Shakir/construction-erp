@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+
+{% block title %}الإيصالات الورقية{% endblock %}
+{% block page_title %}الإيصالات الورقية{% endblock %}
+
+{% block content %}
+<div>
+    <!-- Filter bar -->
+    <div class="mb-4 flex items-center justify-between">
+        <form method="get" class="flex items-center gap-4">
+            <input type="text" name="q" value="{{ query }}"
+                   placeholder="بحث..."
+                   class="form-input w-48">
+            <select name="matched" class="form-select w-32">
+                <option value="">الكل</option>
+                <option value="yes" {% if matched == 'yes' %}selected{% endif %}>مطابق</option>
+                <option value="no" {% if matched == 'no' %}selected{% endif %}>غير مطابق</option>
+            </select>
+            <button type="submit" class="btn btn-secondary btn-sm">بحث</button>
+        </form>
+        <a href="{% url 'expenses:receipt_create' %}" class="btn btn-primary btn-sm">+ تسجيل إيصال</a>
+    </div>
+
+    <!-- Receipts table -->
+    <div class="panel">
+        {% if receipts %}
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>رقم الإيصال</th>
+                    <th>التاريخ</th>
+                    <th>المورد</th>
+                    <th class="text-left">المبلغ</th>
+                    <th>مستلم من</th>
+                    <th>الحالة</th>
+                    <th>المصروف</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for receipt in receipts %}
+                <tr>
+                    <td class="font-mono">{{ receipt.receipt_number }}</td>
+                    <td>{{ receipt.date|date:"Y-m-d" }}</td>
+                    <td>{{ receipt.vendor_name }}</td>
+                    <td class="money">{{ receipt.amount }}</td>
+                    <td>{{ receipt.received_from.name|default:"-" }}</td>
+                    <td>
+                        {% if receipt.matched %}
+                        <span class="text-xs px-2 py-0.5 rounded bg-green-100 text-green-700">مطابق</span>
+                        {% else %}
+                        <span class="text-xs px-2 py-0.5 rounded bg-yellow-100 text-yellow-700">معلق</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if receipt.expense %}
+                        <a href="{% url 'expenses:detail' receipt.expense.pk %}" class="text-primary-600 hover:underline font-mono">
+                            {{ receipt.expense.expense_number }}
+                        </a>
+                        {% else %}
+                        <span class="text-gray-400">-</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        {% if page_obj.has_other_pages %}
+        <div class="p-4 border-t">
+            {% include "partials/pagination.html" %}
+        </div>
+        {% endif %}
+        {% else %}
+        <div class="p-8 text-center text-gray-500">
+            <p>لا يوجد إيصالات</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

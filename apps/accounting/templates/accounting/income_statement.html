@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+
+{% block title %}قائمة الدخل{% endblock %}
+{% block page_title %}قائمة الدخل{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl">
+    <!-- Filter form -->
+    <div class="panel p-4 mb-6">
+        <form method="get" class="flex items-end gap-4">
+            <div>
+                <label class="form-label">حتى تاريخ</label>
+                {{ form.as_of_date }}
+            </div>
+            <button type="submit" class="btn btn-primary">عرض</button>
+        </form>
+    </div>
+
+    <p class="text-sm text-gray-500 mb-4">حتى تاريخ: {{ as_of_date|date:"Y-m-d" }}</p>
+
+    <!-- Income Statement -->
+    <div class="panel">
+        <!-- Revenue Section -->
+        <div class="p-4 border-b">
+            <h3 class="font-semibold text-lg mb-3">الإيرادات</h3>
+            <table class="w-full">
+                <tbody>
+                    {% for item in revenue_data %}
+                    <tr>
+                        <td class="py-1">{{ item.account.code }} - {{ item.account.name }}</td>
+                        <td class="py-1 text-left money w-32">{{ item.balance }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="2" class="py-2 text-gray-500">لا يوجد إيرادات</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+                <tfoot>
+                    <tr class="font-semibold border-t">
+                        <td class="py-2">إجمالي الإيرادات</td>
+                        <td class="py-2 text-left money text-green-600">{{ total_revenue }}</td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+
+        <!-- Expenses Section -->
+        <div class="p-4 border-b">
+            <h3 class="font-semibold text-lg mb-3">المصروفات</h3>
+            <table class="w-full">
+                <tbody>
+                    {% for item in expense_data %}
+                    <tr>
+                        <td class="py-1">{{ item.account.code }} - {{ item.account.name }}</td>
+                        <td class="py-1 text-left money w-32">{{ item.balance }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="2" class="py-2 text-gray-500">لا يوجد مصروفات</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+                <tfoot>
+                    <tr class="font-semibold border-t">
+                        <td class="py-2">إجمالي المصروفات</td>
+                        <td class="py-2 text-left money text-red-600">{{ total_expenses }}</td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+
+        <!-- Net Income -->
+        <div class="p-4 bg-gray-50">
+            <table class="w-full">
+                <tr class="font-bold text-lg">
+                    <td>صافي الدخل</td>
+                    <td class="text-left money w-32 {% if net_income >= 0 %}text-green-600{% else %}text-red-600{% endif %}">
+                        {{ net_income }}
+                    </td>
+                </tr>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+
+{% block title %}دليل الحسابات{% endblock %}
+{% block page_title %}دليل الحسابات{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl">
+    <div class="flex items-center justify-between mb-4">
+        <div></div>
+        <a href="{% url 'accounting:account_create' %}" class="btn btn-primary btn-sm">+ حساب جديد</a>
+    </div>
+
+    {% for account_type in account_types %}
+    <div class="panel mb-4">
+        <div class="p-3 border-b bg-gray-50">
+            <h3 class="font-semibold">{{ account_type.name }}</h3>
+        </div>
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th class="w-24">الرمز</th>
+                    <th>الاسم</th>
+                    <th>الاسم الإنجليزي</th>
+                    <th class="w-20">تحكم</th>
+                    <th class="w-20">نشط</th>
+                    <th class="w-20"></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for account in account_type.accounts.all %}
+                <tr>
+                    <td class="font-mono">{{ account.code }}</td>
+                    <td>{{ account.name }}</td>
+                    <td class="text-gray-500">{{ account.name_en|default:"-" }}</td>
+                    <td>
+                        {% if account.is_control %}
+                        <span class="text-xs px-2 py-0.5 rounded bg-purple-100 text-purple-700">تحكم</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if account.is_active %}
+                        <span class="text-green-600">&#10003;</span>
+                        {% else %}
+                        <span class="text-red-600">&#10005;</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <a href="{% url 'accounting:account_edit' account.pk %}" class="text-sm text-primary-600 hover:underline">تعديل</a>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="6" class="text-center text-gray-500 py-4">لا يوجد حسابات</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}

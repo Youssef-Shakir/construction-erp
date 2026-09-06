@@ -1,0 +1,46 @@
+{#
+History tab - shows django-simple-history records
+Required context: history_records
+#}
+{% if history_records %}
+<table class="data-table">
+    <thead>
+        <tr>
+            <th>التاريخ</th>
+            <th>المستخدم</th>
+            <th>نوع التغيير</th>
+            <th>التفاصيل</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for record in history_records %}
+        <tr>
+            <td class="whitespace-nowrap">{{ record.history_date|date:"Y-m-d H:i:s" }}</td>
+            <td>{% if record.history_user %}{{ record.history_user.get_full_name|default:record.history_user.email }}{% else %}النظام{% endif %}</td>
+            <td>
+                {% if record.history_type == '+' %}
+                <span class="text-green-600">إنشاء</span>
+                {% elif record.history_type == '~' %}
+                <span class="text-blue-600">تعديل</span>
+                {% elif record.history_type == '-' %}
+                <span class="text-red-600">حذف</span>
+                {% endif %}
+            </td>
+            <td class="text-xs text-gray-500">
+                {% if record.history_type == '+' %}
+                    سجل جديد
+                {% elif record.history_type == '~' %}
+                    تم تعديل البيانات
+                {% elif record.history_type == '-' %}
+                    تم الحذف
+                {% else %}
+                    -
+                {% endif %}
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<p class="text-gray-500 text-sm py-4">لا يوجد سجل تعديلات</p>
+{% endif %}

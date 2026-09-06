@@ -1,0 +1,32 @@
+{% load static %}
+{#
+Attachment tab - include in document detail tabs
+Required context: content_type_id, object_id, attachments
+#}
+<div class="space-y-4">
+    <!-- Upload form -->
+    <form hx-post="{% url 'core:attachment_upload' %}"
+          hx-target="#attachments-list"
+          hx-encoding="multipart/form-data"
+          class="flex items-end gap-4 p-4 bg-gray-50 rounded">
+        {% csrf_token %}
+        <input type="hidden" name="content_type_id" value="{{ content_type_id }}">
+        <input type="hidden" name="object_id" value="{{ object_id }}">
+        <div class="flex-1">
+            <label class="block text-xs text-gray-500 mb-1">اختر ملف</label>
+            <input type="file" name="file" required class="form-input text-sm w-full">
+        </div>
+        <div class="flex-1">
+            <label class="block text-xs text-gray-500 mb-1">الوصف (اختياري)</label>
+            <input type="text" name="description" class="form-input text-sm w-full" placeholder="وصف المرفق">
+        </div>
+        <button type="submit" class="btn btn-primary btn-sm">
+            رفع
+        </button>
+    </form>
+
+    <!-- Attachments list -->
+    <div id="attachments-list">
+        {% include "partials/attachment_list.html" %}
+    </div>
+</div>

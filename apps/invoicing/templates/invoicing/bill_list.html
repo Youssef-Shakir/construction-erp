@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+
+{% block title %}فواتير الموردين{% endblock %}
+{% block page_title %}فواتير الموردين{% endblock %}
+
+{% block content %}
+<div>
+    <!-- Filter bar -->
+    <div class="mb-4 flex items-center justify-between">
+        <form method="get" class="flex items-center gap-4">
+            <input type="text" name="q" value="{{ query }}"
+                   placeholder="بحث..."
+                   class="form-input w-48">
+            <select name="status" class="form-select w-32">
+                <option value="">كل الحالات</option>
+                <option value="draft" {% if status == 'draft' %}selected{% endif %}>مسودة</option>
+                <option value="posted" {% if status == 'posted' %}selected{% endif %}>مرحّل</option>
+                <option value="overdue" {% if status == 'overdue' %}selected{% endif %}>متأخر</option>
+                <option value="cancelled" {% if status == 'cancelled' %}selected{% endif %}>ملغي</option>
+            </select>
+            <button type="submit" class="btn btn-secondary btn-sm">بحث</button>
+        </form>
+        <a href="{% url 'bills:create' %}" class="btn btn-primary btn-sm">+ فاتورة مورد جديدة</a>
+    </div>
+
+    <!-- Bills table -->
+    <div class="panel">
+        {% if bills %}
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>الرقم</th>
+                    <th>التاريخ</th>
+                    <th>المورد</th>
+                    <th>رقم فاتورة المورد</th>
+                    <th>المشروع</th>
+                    <th class="text-left">المبلغ</th>
+                    <th class="text-left">المتبقي</th>
+                    <th>الاستحقاق</th>
+                    <th>الحالة</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for bill in bills %}
+                <tr>
+                    <td>
+                        <a href="{% url 'bills:detail' bill.pk %}" class="text-primary-600 hover:underline font-mono">
+                            {{ bill.bill_number }}
+                        </a>
+                    </td>
+                    <td>{{ bill.date|date:"Y-m-d" }}</td>
+                    <td>{{ bill.supplier.name }}</td>
+                    <td>{{ bill.vendor_reference|default:"-" }}</td>
+                    <td>
+                        {% if bill.project %}
+                        <a href="{% url 'projects:detail' bill.project.pk %}" class="text-primary-600 hover:underline">
+                            {{ bill.project.code }}
+                        </a>
+                        {% else %}
+                        <span class="text-gray-400">-</span>
+                        {% endif %}
+                    </td>
+                    <td class="money">{{ bill.amount }}</td>
+                    <td class="money {% if bill.amount_remaining > 0 %}text-orange-600{% else %}text-green-600{% endif %}">
+                        {{ bill.amount_remaining }}
+                    </td>
+                    <td class="{% if bill.is_overdue %}text-red-600{% endif %}">
+                        {{ bill.due_date|date:"Y-m-d" }}
+                    </td>
+                    <td>
+                        {% if bill.status == 'draft' %}
+                        <span class="badge badge-draft">مسودة</span>
+                        {% elif bill.status == 'posted' %}
+                            {% if bill.is_overdue %}
+                            <span class="badge badge-overdue">متأخر</span>
+                            {% elif bill.is_paid %}
+                            <span class="badge badge-paid">مدفوع</span>
+                            {% else %}
+                            <span class="badge badge-posted">مرحّل</span>
+                            {% endif %}
+                        {% else %}
+                        <span class="badge badge-cancelled">ملغي</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        {% if page_obj.has_other_pages %}
+        <div class="p-4 border-t">
+            {% include "partials/pagination.html" %}
+        </div>
+        {% endif %}
+        {% else %}
+        <div class="p-8 text-center text-gray-500">
+            <p>لا يوجد فواتير</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

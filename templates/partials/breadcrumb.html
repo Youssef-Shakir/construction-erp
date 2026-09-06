@@ -1,0 +1,16 @@
+{#
+Breadcrumb navigation partial
+Usage: {% include "partials/breadcrumb.html" with items=breadcrumb_items %}
+#}
+{% if items %}
+<nav class="breadcrumb" aria-label="التنقل">
+    {% for item in items %}
+        {% if forloop.last %}
+            <span class="current">{{ item.title }}</span>
+        {% else %}
+            <a href="{{ item.url }}">{{ item.title }}</a>
+            <span class="separator">/</span>
+        {% endif %}
+    {% endfor %}
+</nav>
+{% endif %}

@@ -1,20 +1,28 @@
 """
 Django settings for Construction ERP project.
 """
-import os
+import importlib.util
 from pathlib import Path
-from decouple import config, Csv
+
+from decouple import Csv, config
+from django.core.exceptions import ImproperlyConfigured
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = config('SECRET_KEY', default='django-insecure-change-this-in-production-abc123xyz789')
+# Safe by default: production unless DEBUG=True is set explicitly (.env for dev).
+DEBUG = config('DEBUG', default=False, cast=bool)
 
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = config('DEBUG', default=True, cast=bool)
+_INSECURE_KEY = 'django-insecure-dev-only-key-do-not-use-in-production'
+SECRET_KEY = config('SECRET_KEY', default=_INSECURE_KEY if DEBUG else '')
+if not SECRET_KEY or (not DEBUG and SECRET_KEY == _INSECURE_KEY):
+    raise ImproperlyConfigured(
+        'SECRET_KEY must be set in production. Generate one with: '
+        'python -c "from django.core.management.utils import get_random_secret_key as k; print(k())"'
+    )
 
 ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='localhost,127.0.0.1', cast=Csv())
+CSRF_TRUSTED_ORIGINS = config('CSRF_TRUSTED_ORIGINS', default='', cast=Csv())
 
 # Application definition
 INSTALLED_APPS = [
@@ -82,6 +90,8 @@ DATABASES = {
         'PASSWORD': config('DB_PASSWORD', default='postgres'),
         'HOST': config('DB_HOST', default='localhost'),
         'PORT': config('DB_PORT', default='5432'),
+        'CONN_MAX_AGE': config('DB_CONN_MAX_AGE', default=60, cast=int),
+        'CONN_HEALTH_CHECKS': True,
     }
 }
 
@@ -108,7 +118,6 @@ AUTH_PASSWORD_VALIDATORS = [
 LANGUAGE_CODE = 'ar'
 TIME_ZONE = 'Asia/Riyadh'
 USE_I18N = True
-USE_L10N = True
 USE_TZ = True
 
 LANGUAGES = [
@@ -125,9 +134,30 @@ STATIC_URL = 'static/'
 STATICFILES_DIRS = [BASE_DIR / 'static']
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 
-# Media files (uploads)
+STORAGES = {
+    'default': {'BACKEND': 'django.core.files.storage.FileSystemStorage'},
+    'staticfiles': {
+        'BACKEND': (
+            'django.contrib.staticfiles.storage.StaticFilesStorage' if DEBUG
+            else 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+        ),
+    },
+}
+
+# Media files (uploads). Attachments are NOT served from MEDIA_URL in
+# production - they go through core:attachment_download (permission check).
 MEDIA_URL = 'media/'
-MEDIA_ROOT = BASE_DIR / 'media'
+MEDIA_ROOT = Path(config('MEDIA_ROOT', default=str(BASE_DIR / 'media')))
+
+# Attachments / scanners
+ATTACHMENT_MAX_UPLOAD_MB = config('ATTACHMENT_MAX_UPLOAD_MB', default=25, cast=int)
+ATTACHMENT_IMAGE_MAX_DIMENSION = config('ATTACHMENT_IMAGE_MAX_DIMENSION', default=2800, cast=int)
+# Folder the office scanner writes to ("scan to folder"); see `manage.py import_scans`.
+SCAN_INBOX_DIR = config('SCAN_INBOX_DIR', default='')
+# Behind nginx: internal location mapped to MEDIA_ROOT, e.g. /protected-media/
+ATTACHMENT_X_ACCEL_PREFIX = config('ATTACHMENT_X_ACCEL_PREFIX', default='')
+DATA_UPLOAD_MAX_NUMBER_FILES = 50
+FILE_UPLOAD_PERMISSIONS = 0o640
 
 # Default primary key field type
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
@@ -138,8 +168,37 @@ LOGIN_REDIRECT_URL = 'dashboard:home'
 LOGOUT_REDIRECT_URL = 'accounts:login'
 
 # Session settings
-SESSION_COOKIE_AGE = 86400  # 24 hours
+SESSION_COOKIE_AGE = config('SESSION_COOKIE_AGE', default=8 * 3600, cast=int)  # one working day
 SESSION_EXPIRE_AT_BROWSER_CLOSE = False
+
+# Security headers / HTTPS (active whenever DEBUG is off)
+X_FRAME_OPTIONS = 'DENY'
+SECURE_CONTENT_TYPE_NOSNIFF = True
+SECURE_REFERRER_POLICY = 'same-origin'
+if not DEBUG:
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+    SECURE_SSL_REDIRECT = config('SECURE_SSL_REDIRECT', default=True, cast=bool)
+    SESSION_COOKIE_SECURE = config('SECURE_COOKIES', default=True, cast=bool)
+    CSRF_COOKIE_SECURE = SESSION_COOKIE_SECURE
+    # Turn on once HTTPS is confirmed working everywhere (e.g. 31536000).
+    SECURE_HSTS_SECONDS = config('SECURE_HSTS_SECONDS', default=0, cast=int)
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = config('SECURE_HSTS_INCLUDE_SUBDOMAINS', default=False, cast=bool)
+
+# Logging: everything to stdout (journald / docker collect it)
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'plain': {'format': '%(asctime)s %(levelname)s %(name)s: %(message)s'},
+    },
+    'handlers': {
+        'console': {'class': 'logging.StreamHandler', 'formatter': 'plain'},
+    },
+    'root': {'handlers': ['console'], 'level': config('LOG_LEVEL', default='INFO')},
+    'loggers': {
+        'django.request': {'handlers': ['console'], 'level': 'WARNING', 'propagate': False},
+    },
+}
 
 # Messages
 from django.contrib.messages import constants as messages
@@ -151,8 +210,8 @@ MESSAGE_TAGS = {
     messages.ERROR: 'error',
 }
 
-# Debug toolbar (only in development)
-if DEBUG:
+# Debug toolbar (only in development, and only if installed)
+if DEBUG and importlib.util.find_spec('debug_toolbar') and config('DEBUG_TOOLBAR', default=True, cast=bool):
     INSTALLED_APPS += ['debug_toolbar']
     MIDDLEWARE.insert(0, 'debug_toolbar.middleware.DebugToolbarMiddleware')
     INTERNAL_IPS = ['127.0.0.1']

@@ -22,12 +22,11 @@ urlpatterns = [
     path('documents/', include('apps.core.urls', namespace='core')),
 ]
 
-# Debug toolbar
+# Development only
 if settings.DEBUG:
-    import debug_toolbar
-    urlpatterns = [
-        path('__debug__/', include(debug_toolbar.urls)),
-    ] + urlpatterns
+    if 'debug_toolbar' in settings.INSTALLED_APPS:
+        import debug_toolbar
+        urlpatterns = [path('__debug__/', include(debug_toolbar.urls))] + urlpatterns
 
-    # Serve media files in development
+    # Company logo etc. (attachments use core:attachment_download instead)
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

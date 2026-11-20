@@ -33,7 +33,10 @@
                 </div>
                 <div class="flex items-center gap-3 shrink-0">
                     <span class="hidden sm:inline text-sm text-gray-600">{{ user.get_full_name|default:user.email }}</span>
-                    <a href="{% url 'accounts:logout' %}" class="text-sm text-gray-500 hover:text-gray-700">خروج</a>
+                    <form method="post" action="{% url 'accounts:logout' %}" class="inline">
+                        {% csrf_token %}
+                        <button type="submit" class="text-sm text-gray-500 hover:text-gray-700">خروج</button>
+                    </form>
                 </div>
             </div>
         </header>

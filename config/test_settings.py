@@ -2,7 +2,12 @@
 Django test settings for Construction ERP project.
 Uses SQLite for faster test execution.
 """
-from .settings import *  # noqa: F401, F403
+import os
+
+os.environ.setdefault('DEBUG', 'True')
+os.environ.setdefault('DEBUG_TOOLBAR', 'False')
+
+from .settings import *  # noqa: E402,F401,F403
 
 # Use SQLite for testing
 DATABASES = {
@@ -21,5 +26,10 @@ PASSWORD_HASHERS = [
     'django.contrib.auth.hashers.MD5PasswordHasher',
 ]
 
-# Disable logging in tests
-LOGGING = {}
+# Quiet logging in tests
+LOGGING = {'version': 1, 'disable_existing_loggers': False}
+
+STORAGES = {
+    'default': {'BACKEND': 'django.core.files.storage.FileSystemStorage'},
+    'staticfiles': {'BACKEND': 'django.contrib.staticfiles.storage.StaticFilesStorage'},
+}

@@ -14,9 +14,10 @@ from django.utils import timezone
 from simple_history.models import HistoricalRecords
 
 from apps.core.models import AuditMixin, Partner
+from apps.core.sequences import next_document_number
 from apps.projects.models import Project
 from apps.accounting.models import Journal, JournalEntry, Account
-from apps.accounting.posting import create_journal_entry, reverse_entry, PostingError
+from apps.accounting.posting import create_journal_entry, reverse_entry, PostingError, locked_document
 
 
 class Invoice(AuditMixin, models.Model):
@@ -80,9 +81,7 @@ class Invoice(AuditMixin, models.Model):
 
     def save(self, *args, **kwargs):
         if not self.invoice_number:
-            last = Invoice.objects.order_by('-id').first()
-            next_num = (last.id + 1) if last else 1
-            self.invoice_number = f'INV-{next_num:06d}'
+            self.invoice_number = next_document_number('INV', Invoice, 'invoice_number')
 
         if not self.amount_base:
             self.amount_base = self.amount
@@ -138,6 +137,7 @@ class Invoice(AuditMixin, models.Model):
             return 'مدفوعة جزئياً'
         return 'غير مدفوعة'
 
+    @locked_document
     def post(self, user=None):
         """Post the invoice, creating journal entry."""
         if self.status != 'draft':
@@ -187,6 +187,7 @@ class Invoice(AuditMixin, models.Model):
 
         return entry
 
+    @locked_document
     def cancel(self, user=None):
         """Cancel the invoice."""
         if self.status != 'posted':
@@ -276,9 +277,7 @@ class Bill(AuditMixin, models.Model):
 
     def save(self, *args, **kwargs):
         if not self.bill_number:
-            last = Bill.objects.order_by('-id').first()
-            next_num = (last.id + 1) if last else 1
-            self.bill_number = f'BILL-{next_num:06d}'
+            self.bill_number = next_document_number('BILL', Bill, 'bill_number')
 
         if not self.amount_base:
             self.amount_base = self.amount
@@ -334,6 +333,7 @@ class Bill(AuditMixin, models.Model):
             return 'مدفوعة جزئياً'
         return 'غير مدفوعة'
 
+    @locked_document
     def post(self, user=None):
         """Post the bill, creating journal entry."""
         if self.status != 'draft':
@@ -383,6 +383,7 @@ class Bill(AuditMixin, models.Model):
 
         return entry
 
+    @locked_document
     def cancel(self, user=None):
         """Cancel the bill."""
         if self.status != 'posted':

@@ -352,3 +352,19 @@ def return_post(request, pk):
             messages.error(request, str(e))
 
     return redirect('advances:detail', pk=ret.advance.pk)
+
+
+@login_required
+@posting_permission_required
+def return_cancel(request, pk):
+    """Cancel a posted return (creates a reversing entry)."""
+    ret = get_object_or_404(AdvanceReturn, pk=pk)
+
+    if request.method == 'POST':
+        try:
+            ret.cancel(user=request.user)
+            messages.success(request, f'تم إلغاء مردود السلفة {ret.return_number}')
+        except PostingError as e:
+            messages.error(request, str(e))
+
+    return redirect('advances:detail', pk=ret.advance.pk)

@@ -249,6 +249,12 @@
                                 {% csrf_token %}
                                 <button type="submit" class="text-sm text-primary-600 hover:underline">ترحيل</button>
                             </form>
+                            {% elif ret.status == 'posted' and can_post and advance.status == 'posted' %}
+                            <form method="post" action="{% url 'advances:return_cancel' ret.pk %}" class="inline"
+                                  onsubmit="return confirm('سيتم إنشاء قيد عكسي لإلغاء هذا المردود. متابعة؟');">
+                                {% csrf_token %}
+                                <button type="submit" class="text-sm text-red-600 hover:underline">إلغاء</button>
+                            </form>
                             {% endif %}
                         </td>
                     </tr>

@@ -15,8 +15,9 @@ from django.contrib.contenttypes.models import ContentType
 from simple_history.models import HistoricalRecords
 
 from apps.core.models import AuditMixin, Partner
+from apps.core.sequences import next_document_number
 from apps.accounting.models import Journal, JournalEntry, Account
-from apps.accounting.posting import create_journal_entry, reverse_entry, PostingError
+from apps.accounting.posting import create_journal_entry, reverse_entry, PostingError, locked_document
 
 
 class Payment(AuditMixin, models.Model):
@@ -94,9 +95,7 @@ class Payment(AuditMixin, models.Model):
     def save(self, *args, **kwargs):
         if not self.payment_number:
             prefix = 'PMT-IN' if self.direction == 'inbound' else 'PMT-OUT'
-            last = Payment.objects.filter(direction=self.direction).order_by('-id').first()
-            next_num = (last.id + 1) if last else 1
-            self.payment_number = f'{prefix}-{next_num:06d}'
+            self.payment_number = next_document_number(prefix, Payment, 'payment_number')
 
         if not self.amount_base:
             self.amount_base = self.amount
@@ -125,22 +124,28 @@ class Payment(AuditMixin, models.Model):
         """Remaining unallocated amount."""
         return self.amount - self.allocated_amount
 
+    @locked_document
     def post(self, user=None):
         """Post the payment, creating journal entry."""
         if self.status != 'draft':
             raise PostingError('يمكن ترحيل المسودات فقط')
 
-        # Get control account based on direction
+        # Control account based on direction
         try:
-            if self.direction == 'inbound':
-                control_account = Account.objects.get(code='1100')  # AR
-                journal = Journal.objects.get(type='cash')
-            else:
-                control_account = Account.objects.get(code='2000')  # AP
-                journal = Journal.objects.get(type='cash')
+            control_account = Account.objects.get(code='1100' if self.direction == 'inbound' else '2000')
         except Account.DoesNotExist:
             raise PostingError('الحسابات المطلوبة غير موجودة')
-        except Journal.DoesNotExist:
+
+        # Journal: the cash/bank journal whose default account is the payment
+        # account (so bank payments land in the bank journal), else the cash one.
+        cash_like = Journal.objects.filter(is_active=True, type__in=['cash', 'bank'])
+        journal = (
+            cash_like.filter(
+                models.Q(default_debit_account=self.account) | models.Q(default_credit_account=self.account)
+            ).order_by('code').first()
+            or cash_like.filter(type='cash').order_by('code').first()
+        )
+        if journal is None:
             raise PostingError('يومية النقدية غير موجودة')
 
         with transaction.atomic():
@@ -191,6 +196,7 @@ class Payment(AuditMixin, models.Model):
 
         return entry
 
+    @locked_document
     def cancel(self, user=None):
         """Cancel the payment."""
         if self.status != 'posted':

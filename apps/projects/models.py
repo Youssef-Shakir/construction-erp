@@ -118,10 +118,9 @@ class Project(AuditMixin, models.Model):
 
     @property
     def open_advances(self):
-        """Total open advances for this project."""
+        """Outstanding (unsettled) balance of posted advances for this project."""
         from apps.advances.models import CashAdvance
-        result = CashAdvance.objects.filter(
-            project=self,
-            status='posted'
-        ).aggregate(total=Sum('amount'))
-        return result['total'] or Decimal('0.00')
+        total = Decimal('0.00')
+        for adv in CashAdvance.objects.filter(project=self, status='posted'):
+            total += adv.remaining
+        return total

@@ -46,6 +46,19 @@ class AuditMixin(models.Model):
         super().save(*args, **kwargs)
 
 
+class DocumentSequence(models.Model):
+    """Per-prefix counter used by core.sequences.next_document_number()."""
+    key = models.CharField('البادئة', max_length=30, unique=True)
+    next_value = models.PositiveBigIntegerField('القيمة التالية', default=1)
+
+    class Meta:
+        verbose_name = 'تسلسل المستندات'
+        verbose_name_plural = 'تسلسلات المستندات'
+
+    def __str__(self):
+        return f'{self.key}: {self.next_value}'
+
+
 class CompanySettings(models.Model):
     """
     Singleton model for company-wide settings.

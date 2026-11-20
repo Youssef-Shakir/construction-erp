@@ -14,6 +14,7 @@ from apps.accounts.permissions import can_post_document, posting_permission_requ
 from apps.accounting.posting import PostingError
 from apps.core.models import Attachment
 from apps.invoicing.models import Invoice, Bill
+from .services import allocate_payment
 from .models import Payment, PaymentAllocation
 from .forms import PaymentForm
 
@@ -246,37 +247,23 @@ def payment_allocate(request, pk):
 
         try:
             amount = Decimal(amount)
-        except (ValueError, TypeError):
+        except (ValueError, TypeError, ArithmeticError):
             messages.error(request, 'المبلغ غير صالح')
             return redirect('payments:detail', pk=pk)
 
-        if amount <= 0:
-            messages.error(request, 'المبلغ يجب أن يكون أكبر من صفر')
-            return redirect('payments:detail', pk=pk)
-
-        if amount > payment.unallocated_amount:
-            messages.error(request, f'المبلغ يتجاوز المتبقي ({payment.unallocated_amount})')
-            return redirect('payments:detail', pk=pk)
-
-        # Get the document
         if doc_type == 'invoice':
             doc = get_object_or_404(Invoice, pk=doc_id)
-            ct = ContentType.objects.get_for_model(Invoice)
-        else:
+        elif doc_type == 'bill':
             doc = get_object_or_404(Bill, pk=doc_id)
-            ct = ContentType.objects.get_for_model(Bill)
-
-        if amount > doc.amount_remaining:
-            messages.error(request, f'المبلغ يتجاوز المتبقي في المستند ({doc.amount_remaining})')
+        else:
+            messages.error(request, 'نوع المستند غير صالح')
             return redirect('payments:detail', pk=pk)
 
-        # Create allocation
-        PaymentAllocation.objects.create(
-            payment=payment,
-            content_type=ct,
-            object_id=doc.pk,
-            amount=amount,
-        )
+        try:
+            allocate_payment(payment, doc, amount)
+        except PostingError as e:
+            messages.error(request, str(e))
+            return redirect('payments:detail', pk=pk)
 
         messages.success(request, 'تم تخصيص الدفعة بنجاح')
 

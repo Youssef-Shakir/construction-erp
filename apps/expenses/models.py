@@ -13,10 +13,11 @@ from django.utils import timezone
 from simple_history.models import HistoricalRecords
 
 from apps.core.models import AuditMixin, Partner
+from apps.core.sequences import next_document_number
 from apps.projects.models import Project
 from apps.advances.models import CashAdvance
 from apps.accounting.models import Journal, JournalEntry, Account
-from apps.accounting.posting import create_journal_entry, reverse_entry, PostingError
+from apps.accounting.posting import create_journal_entry, reverse_entry, PostingError, locked_document
 
 
 class ExpenseBatch(AuditMixin, models.Model):
@@ -68,9 +69,7 @@ class ExpenseBatch(AuditMixin, models.Model):
 
     def save(self, *args, **kwargs):
         if not self.batch_number:
-            last = ExpenseBatch.objects.order_by('-id').first()
-            next_num = (last.id + 1) if last else 1
-            self.batch_number = f'EXPB-{next_num:06d}'
+            self.batch_number = next_document_number('EXPB', ExpenseBatch, 'batch_number')
         super().save(*args, **kwargs)
 
     @property
@@ -83,6 +82,7 @@ class ExpenseBatch(AuditMixin, models.Model):
     def line_count(self):
         return self.lines.count()
 
+    @locked_document
     def post(self, user=None):
         """
         Post every line in this batch together as ONE journal entry:
@@ -100,6 +100,7 @@ class ExpenseBatch(AuditMixin, models.Model):
             raise PostingError('السلفة يجب أن تكون مرحّلة')
 
         total = sum((line.amount for line in lines_qs), Decimal('0.00'))
+        self.advance.lock()
         if total > self.advance.remaining:
             raise PostingError(
                 f'إجمالي المستند ({total}) أكبر من المتبقي في السلفة ({self.advance.remaining})'
@@ -153,6 +154,7 @@ class ExpenseBatch(AuditMixin, models.Model):
 
         return entry
 
+    @locked_document
     def cancel(self, user=None):
         """Cancel the batch by reversing its single shared journal entry."""
         if self.status != 'posted':
@@ -262,9 +264,7 @@ class Expense(AuditMixin, models.Model):
 
     def save(self, *args, **kwargs):
         if not self.expense_number:
-            last = Expense.objects.order_by('-id').first()
-            next_num = (last.id + 1) if last else 1
-            self.expense_number = f'EXP-{next_num:06d}'
+            self.expense_number = next_document_number('EXP', Expense, 'expense_number')
 
         if not self.amount_base:
             self.amount_base = self.amount
@@ -315,6 +315,7 @@ class Expense(AuditMixin, models.Model):
             return self.batch.journal_entry
         return None
 
+    @locked_document
     def post(self, user=None):
         """
         Post the expense, creating the journal entry.
@@ -335,6 +336,18 @@ class Expense(AuditMixin, models.Model):
 
         if self.advance and self.advance.status != 'posted':
             raise PostingError('السلفة يجب أن تكون مرحّلة')
+
+        if self.amount <= 0:
+            raise PostingError('المبلغ يجب أن يكون أكبر من صفر')
+
+        # Re-check the advance balance under a lock: other drafts may have
+        # been posted against the same advance since this one was created.
+        if self.advance:
+            self.advance.lock()
+            if self.amount > self.advance.remaining:
+                raise PostingError(
+                    f'المبلغ ({self.amount}) أكبر من المتبقي في السلفة ({self.advance.remaining})'
+                )
 
         # Get accounts
         try:
@@ -387,6 +400,7 @@ class Expense(AuditMixin, models.Model):
 
         return entry
 
+    @locked_document
     def cancel(self, user=None):
         """Cancel the expense by reversing the journal entry."""
         if self.batch_id:
@@ -448,9 +462,7 @@ class PaperReceipt(models.Model):
 
     def save(self, *args, **kwargs):
         if not self.receipt_number:
-            last = PaperReceipt.objects.order_by('-id').first()
-            next_num = (last.id + 1) if last else 1
-            self.receipt_number = f'RCP-{next_num:06d}'
+            self.receipt_number = next_document_number('RCP', PaperReceipt, 'receipt_number')
 
         # Auto-match status
         if self.expense:

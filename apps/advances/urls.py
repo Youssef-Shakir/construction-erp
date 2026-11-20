@@ -21,4 +21,5 @@ urlpatterns = [
     path('returns/new/', views.return_create, name='return_create'),
     path('<int:advance_pk>/returns/new/', views.return_create, name='return_create_for'),
     path('returns/<int:pk>/post/', views.return_post, name='return_post'),
+    path('returns/<int:pk>/cancel/', views.return_cancel, name='return_cancel'),
 ]

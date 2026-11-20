@@ -5,7 +5,7 @@ The accounting app is agnostic of construction domain. It only enforces
 debits == credits and provides the ledger infrastructure.
 """
 from decimal import Decimal
-from django.db import models
+from django.db import models, transaction
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from simple_history.models import HistoricalRecords
@@ -58,7 +58,7 @@ class Account(models.Model):
     )
     parent = models.ForeignKey(
         'self',
-        on_delete=models.CASCADE,
+        on_delete=models.PROTECT,
         null=True,
         blank=True,
         related_name='children',
@@ -84,42 +84,22 @@ class Account(models.Model):
 
     @property
     def balance(self):
-        """Calculate current balance from journal lines."""
-        from django.db.models import Sum
-        result = self.journal_lines.filter(
-            entry__is_posted=True
-        ).aggregate(
-            total_debit=Sum('debit'),
-            total_credit=Sum('credit')
-        )
-        debit = result['total_debit'] or Decimal('0.00')
-        credit = result['total_credit'] or Decimal('0.00')
-
-        if self.account_type.normal_balance == 'debit':
-            return debit - credit
-        return credit - debit
+        """Current signed balance (normal direction), derived from posted lines."""
+        from .posting import get_account_balance
+        return get_account_balance(self)
 
     def get_balance_at_date(self, as_of_date, project=None):
         """
-        Calculate balance as of a specific date.
-
-        Pass `project` to scope the balance to journal lines tagged with
-        that project only (used for per-project income statements).
+        Signed balance as of a date (inclusive). Pass `project` to scope to
+        lines tagged with that project (per-project statements).
         """
         from django.db.models import Sum
-        lines = self.journal_lines.filter(
-            entry__is_posted=True,
-            entry__date__lte=as_of_date
-        )
+        lines = self.journal_lines.filter(entry__is_posted=True, entry__date__lte=as_of_date)
         if project is not None:
             lines = lines.filter(project=project)
-        result = lines.aggregate(
-            total_debit=Sum('debit'),
-            total_credit=Sum('credit')
-        )
-        debit = result['total_debit'] or Decimal('0.00')
-        credit = result['total_credit'] or Decimal('0.00')
-
+        totals = lines.aggregate(d=Sum('debit'), c=Sum('credit'))
+        debit = totals['d'] or Decimal('0.00')
+        credit = totals['c'] or Decimal('0.00')
         if self.account_type.normal_balance == 'debit':
             return debit - credit
         return credit - debit
@@ -168,10 +148,19 @@ class Journal(models.Model):
         return f'{self.code} - {self.name}'
 
     def get_next_entry_number(self):
-        """Generate next entry number and increment counter."""
-        number = f'{self.code}-{self.next_number:06d}'
-        self.next_number += 1
-        self.save(update_fields=['next_number'])
+        """
+        Generate the next entry number and increment the counter.
+
+        The journal row is locked (SELECT ... FOR UPDATE) so two concurrent
+        postings can never receive the same number. Must run inside a
+        transaction; create_journal_entry() guarantees that.
+        """
+        with transaction.atomic():
+            locked = Journal.objects.select_for_update().get(pk=self.pk)
+            number = f'{locked.code}-{locked.next_number:06d}'
+            locked.next_number += 1
+            locked.save(update_fields=['next_number'])
+            self.next_number = locked.next_number
         return number
 
 
@@ -244,20 +233,55 @@ class JournalEntry(models.Model):
     def __str__(self):
         return f'{self.entry_number} - {self.date}'
 
+    # Fields that may still change after posting (reversal bookkeeping only).
+    MUTABLE_AFTER_POSTING = frozenset({'is_reversed', 'reversed_by', 'reverses'})
+
+    def _changed_posted_fields(self):
+        """Return names of immutable fields that differ from the posted DB row."""
+        if not self.pk:
+            return []
+        old = JournalEntry.objects.filter(pk=self.pk).first()
+        if old is None or not old.is_posted:
+            return []
+        changed = []
+        for field in self._meta.concrete_fields:
+            if field.name in self.MUTABLE_AFTER_POSTING or field.primary_key:
+                continue
+            if getattr(old, field.attname) != getattr(self, field.attname):
+                changed.append(field.name)
+        return changed
+
     def clean(self):
         """Validate entry before saving."""
-        if self.pk and self.is_posted:
-            # Check if we're trying to modify a posted entry
-            old = JournalEntry.objects.get(pk=self.pk)
-            if old.is_posted:
-                # Only allow updating reversal fields
-                mutable_fields = {'is_reversed', 'reversed_by'}
-                for field in self._meta.fields:
-                    if field.name not in mutable_fields and field.name not in ['id', 'history']:
-                        old_val = getattr(old, field.name)
-                        new_val = getattr(self, field.name)
-                        if old_val != new_val:
-                            raise ValidationError('لا يمكن تعديل قيد مرحّل')
+        if self._changed_posted_fields():
+            raise ValidationError('لا يمكن تعديل قيد مرحّل')
+
+    def save(self, *args, **kwargs):
+        # Posted entries are immutable: corrections are reversals, never edits.
+        if self._changed_posted_fields():
+            raise ValidationError('لا يمكن تعديل قيد مرحّل')
+        super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        if self.pk and JournalEntry.objects.filter(pk=self.pk, is_posted=True).exists():
+            raise ValidationError('لا يمكن حذف قيد مرحّل - استخدم قيد عكسي')
+        return super().delete(*args, **kwargs)
+
+    @property
+    def source_document(self):
+        """
+        The business document that owns this entry (invoice, bill, payment...),
+        discovered generically through reverse one-to-one relations so the
+        accounting app stays agnostic of the construction domain.
+        """
+        for rel in self._meta.related_objects:
+            if not rel.one_to_one or rel.related_model is JournalEntry:
+                continue
+            try:
+                return getattr(self, rel.get_accessor_name())
+            except rel.related_model.DoesNotExist:
+                continue
+        return None
 
     @property
     def total_debit(self):
@@ -326,6 +350,19 @@ class JournalLine(models.Model):
         if self.debit > 0:
             return f'{self.account.code} - مدين {self.debit}'
         return f'{self.account.code} - دائن {self.credit}'
+
+    def _entry_is_posted(self):
+        return JournalEntry.objects.filter(pk=self.entry_id, is_posted=True).exists()
+
+    def save(self, *args, **kwargs):
+        if self.entry_id and self._entry_is_posted():
+            raise ValidationError('لا يمكن تعديل سطور قيد مرحّل')
+        super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        if self.entry_id and self._entry_is_posted():
+            raise ValidationError('لا يمكن حذف سطور قيد مرحّل')
+        return super().delete(*args, **kwargs)
 
     def clean(self):
         """Validate line."""

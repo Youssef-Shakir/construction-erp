@@ -23,7 +23,10 @@ from .forms import (
     LedgerFilterForm,
     TrialBalanceFilterForm,
 )
-from .posting import create_journal_entry, reverse_entry, get_trial_balance, get_income_statement, PostingError
+from .posting import (
+    create_journal_entry, reverse_entry, get_trial_balance, get_income_statement,
+    get_balance_sheet, get_account_balance, PostingError,
+)
 
 
 # Chart of Accounts Views
@@ -257,6 +260,17 @@ def entry_reverse(request, pk):
         messages.error(request, 'ليس لديك صلاحية لإلغاء القيود')
         return redirect('accounting:entry_detail', pk=pk)
 
+    # Entries owned by a business document (invoice, bill, payment, ...) must
+    # be cancelled from that document, otherwise the document stays 'posted'
+    # while its accounting has been reversed.
+    source = entry.source_document
+    if source is not None:
+        messages.error(
+            request,
+            f'هذا القيد تابع للمستند {source} - يجب إلغاؤه من صفحة المستند نفسه',
+        )
+        return redirect('accounting:entry_detail', pk=pk)
+
     if request.method == 'POST':
         try:
             reversal = reverse_entry(
@@ -301,9 +315,10 @@ def ledger(request):
         ).order_by('entry__date', 'entry__entry_number', 'line_number')
 
         # Calculate opening balance if date_from specified
+        # Opening balance = everything BEFORE date_from (the lines dated
+        # date_from are listed below; including them here double-counts).
         if date_from:
-            opening = account.get_balance_at_date(date_from)
-            running_balance = opening
+            running_balance = get_account_balance(account, before_date=date_from)
 
     return render(request, 'accounting/ledger.html', {
         'form': form,
@@ -377,67 +392,8 @@ def balance_sheet(request):
     if form.is_valid() and form.cleaned_data.get('as_of_date'):
         as_of_date = form.cleaned_data['as_of_date']
 
-    # Get accounts by type
-    asset_accounts = Account.objects.filter(
-        account_type__code='asset',
-        is_active=True
-    ).select_related('account_type')
-
-    liability_accounts = Account.objects.filter(
-        account_type__code='liability',
-        is_active=True
-    ).select_related('account_type')
-
-    equity_accounts = Account.objects.filter(
-        account_type__code='equity',
-        is_active=True
-    ).select_related('account_type')
-
-    # Calculate balances
-    def get_balances(accounts):
-        data = []
-        total = Decimal('0.00')
-        for acc in accounts:
-            balance = acc.get_balance_at_date(as_of_date) if as_of_date else acc.balance
-            if balance != 0:
-                data.append({'account': acc, 'balance': abs(balance)})
-                total += abs(balance)
-        return data, total
-
-    asset_data, total_assets = get_balances(asset_accounts)
-    liability_data, total_liabilities = get_balances(liability_accounts)
-    equity_data, total_equity = get_balances(equity_accounts)
-
-    # Calculate retained earnings (revenue - expenses)
-    revenue_accounts = Account.objects.filter(account_type__code='revenue', is_active=True)
-    expense_accounts = Account.objects.filter(account_type__code='expense', is_active=True)
-
-    total_revenue = Decimal('0.00')
-    for acc in revenue_accounts:
-        balance = acc.get_balance_at_date(as_of_date) if as_of_date else acc.balance
-        total_revenue += abs(balance)
-
-    total_expenses = Decimal('0.00')
-    for acc in expense_accounts:
-        balance = acc.get_balance_at_date(as_of_date) if as_of_date else acc.balance
-        total_expenses += abs(balance)
-
-    retained_earnings = total_revenue - total_expenses
-    total_equity_with_retained = total_equity + retained_earnings
-
-    return render(request, 'accounting/balance_sheet.html', {
-        'form': form,
-        'as_of_date': as_of_date,
-        'asset_data': asset_data,
-        'liability_data': liability_data,
-        'equity_data': equity_data,
-        'total_assets': total_assets,
-        'total_liabilities': total_liabilities,
-        'total_equity': total_equity,
-        'retained_earnings': retained_earnings,
-        'total_equity_with_retained': total_equity_with_retained,
-        'total_liabilities_and_equity': total_liabilities + total_equity_with_retained,
-    })
+    data = get_balance_sheet(as_of_date)
+    return render(request, 'accounting/balance_sheet.html', {'form': form, **data})
 
 
 # Receivables and Payables

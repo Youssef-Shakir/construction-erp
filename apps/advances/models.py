@@ -14,9 +14,10 @@ from django.db.models import Sum
 from simple_history.models import HistoricalRecords
 
 from apps.core.models import AuditMixin, Partner
+from apps.core.sequences import next_document_number
 from apps.projects.models import Project
 from apps.accounting.models import Journal, JournalEntry, Account
-from apps.accounting.posting import create_journal_entry, reverse_entry, PostingError
+from apps.accounting.posting import create_journal_entry, reverse_entry, PostingError, locked_document
 
 
 class CashAdvance(AuditMixin, models.Model):
@@ -80,9 +81,7 @@ class CashAdvance(AuditMixin, models.Model):
     def save(self, *args, **kwargs):
         # Auto-generate advance number
         if not self.advance_number:
-            last = CashAdvance.objects.order_by('-id').first()
-            next_num = (last.id + 1) if last else 1
-            self.advance_number = f'ADV-{next_num:06d}'
+            self.advance_number = next_document_number('ADV', CashAdvance, 'advance_number')
 
         # Set amount_base = amount in V1 (single currency)
         if not self.amount_base:
@@ -93,6 +92,15 @@ class CashAdvance(AuditMixin, models.Model):
     def clean(self):
         if self.amount <= 0:
             raise ValidationError('المبلغ يجب أن يكون أكبر من صفر')
+
+    def lock(self):
+        """
+        Lock this advance row for the rest of the current transaction.
+        Call before checking `remaining` and posting against it so two
+        concurrent expenses/returns can't both spend the same balance.
+        """
+        CashAdvance.objects.select_for_update().only('pk').get(pk=self.pk)
+        return self
 
     # Settlement calculations (all derived)
     @property
@@ -128,6 +136,7 @@ class CashAdvance(AuditMixin, models.Model):
         """Check if advance is fully settled."""
         return self.remaining == Decimal('0.00')
 
+    @locked_document
     def post(self, user=None):
         """
         Post the cash advance, creating the journal entry.
@@ -185,6 +194,7 @@ class CashAdvance(AuditMixin, models.Model):
 
         return entry
 
+    @locked_document
     def cancel(self, user=None):
         """Cancel the advance by reversing the journal entry."""
         if self.status != 'posted':
@@ -200,6 +210,7 @@ class CashAdvance(AuditMixin, models.Model):
             self.status = 'cancelled'
             self.save()
 
+    @locked_document
     def close(self):
         """Close the advance after full settlement."""
         if self.status != 'posted':
@@ -265,9 +276,7 @@ class AdvanceReturn(AuditMixin, models.Model):
 
     def save(self, *args, **kwargs):
         if not self.return_number:
-            last = AdvanceReturn.objects.order_by('-id').first()
-            next_num = (last.id + 1) if last else 1
-            self.return_number = f'RET-{next_num:06d}'
+            self.return_number = next_document_number('RET', AdvanceReturn, 'return_number')
 
         if not self.amount_base:
             self.amount_base = self.amount
@@ -282,6 +291,7 @@ class AdvanceReturn(AuditMixin, models.Model):
         if self.advance and self.amount > self.advance.remaining:
             raise ValidationError(f'المبلغ المردود ({self.amount}) أكبر من المتبقي ({self.advance.remaining})')
 
+    @locked_document
     def post(self, user=None):
         """Post the return, creating journal entry."""
         if self.status != 'draft':
@@ -289,6 +299,17 @@ class AdvanceReturn(AuditMixin, models.Model):
 
         if self.advance.status != 'posted':
             raise PostingError('السلفة يجب أن تكون مرحّلة')
+
+        if self.amount <= 0:
+            raise PostingError('المبلغ يجب أن يكون أكبر من صفر')
+
+        # Re-check against the live balance under a lock: other expenses or
+        # returns may have been posted since this draft was created.
+        self.advance.lock()
+        if self.amount > self.advance.remaining:
+            raise PostingError(
+                f'المبلغ المردود ({self.amount}) أكبر من المتبقي في السلفة ({self.advance.remaining})'
+            )
 
         try:
             advances_account = Account.objects.get(code='1200')
@@ -332,3 +353,18 @@ class AdvanceReturn(AuditMixin, models.Model):
             self.save()
 
         return entry
+
+    @locked_document
+    def cancel(self, user=None):
+        """Cancel a posted return by reversing its journal entry."""
+        if self.status != 'posted':
+            raise PostingError('يمكن إلغاء المردودات المرحّلة فقط')
+
+        if self.advance.status != 'posted':
+            raise PostingError('لا يمكن إلغاء مردود لسلفة مغلقة أو ملغاة')
+
+        with transaction.atomic():
+            if self.journal_entry:
+                reverse_entry(self.journal_entry, self.date, user)
+            self.status = 'cancelled'
+            self.save()

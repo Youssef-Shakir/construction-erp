@@ -7,16 +7,36 @@
 <div class="max-w-3xl">
     <!-- Filter form -->
     <div class="panel p-4 mb-6">
-        <form method="get" class="flex items-end gap-4">
+        <form method="get" class="flex items-end gap-4 flex-wrap">
             <div>
                 <label class="form-label">حتى تاريخ</label>
                 {{ form.as_of_date }}
             </div>
+            <div>
+                <label class="form-label">المشروع</label>
+                <select name="project" class="form-select w-48">
+                    <option value="">كل المشاريع (الشركة)</option>
+                    {% for p in projects %}
+                    <option value="{{ p.pk }}" {% if project_id == p.pk|stringformat:"s" %}selected{% endif %}>{{ p.code }} - {{ p.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
             <button type="submit" class="btn btn-primary">عرض</button>
+            {% if selected_project %}
+            <a href="{% url 'projects:report_pdf' selected_project.pk %}?as_of_date={{ as_of_date|date:'Y-m-d' }}"
+               class="btn btn-secondary" target="_blank">تصدير PDF للمشروع</a>
+            {% endif %}
         </form>
     </div>
 
-    <p class="text-sm text-gray-500 mb-4">حتى تاريخ: {{ as_of_date|date:"Y-m-d" }}</p>
+    <p class="text-sm text-gray-500 mb-4">
+        حتى تاريخ: {{ as_of_date|date:"Y-m-d" }}
+        {% if selected_project %}
+        - المشروع: <a href="{% url 'projects:detail' selected_project.pk %}" class="text-primary-600 hover:underline">{{ selected_project.code }} - {{ selected_project.name }}</a>
+        {% else %}
+        - كل المشاريع (مستوى الشركة)
+        {% endif %}
+    </p>
 
     <!-- Income Statement -->
     <div class="panel">

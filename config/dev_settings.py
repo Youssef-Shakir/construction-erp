@@ -14,3 +14,7 @@ DATABASES = {
 
 # Debug settings
 DEBUG = True
+
+# Allow any host in local/dev use (accessed via a domain/reverse proxy)
+ALLOWED_HOSTS = ['*']
+CSRF_TRUSTED_ORIGINS = ['http://aboahmed.zan-iraq.com', 'https://aboahmed.zan-iraq.com']

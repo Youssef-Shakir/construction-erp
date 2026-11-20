@@ -99,13 +99,21 @@ class Account(models.Model):
             return debit - credit
         return credit - debit
 
-    def get_balance_at_date(self, as_of_date):
-        """Calculate balance as of a specific date."""
+    def get_balance_at_date(self, as_of_date, project=None):
+        """
+        Calculate balance as of a specific date.
+
+        Pass `project` to scope the balance to journal lines tagged with
+        that project only (used for per-project income statements).
+        """
         from django.db.models import Sum
-        result = self.journal_lines.filter(
+        lines = self.journal_lines.filter(
             entry__is_posted=True,
             entry__date__lte=as_of_date
-        ).aggregate(
+        )
+        if project is not None:
+            lines = lines.filter(project=project)
+        result = lines.aggregate(
             total_debit=Sum('debit'),
             total_credit=Sum('credit')
         )

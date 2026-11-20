@@ -299,3 +299,55 @@ def get_trial_balance(as_of_date=None) -> list:
         'total_credit': total_credit,
         'is_balanced': total_debit == total_credit,
     }
+
+
+def get_income_statement(as_of_date=None, project=None) -> dict:
+    """
+    Generate an income statement (revenue, expenses, net income).
+
+    Args:
+        as_of_date: Optional date for point-in-time balances (defaults to today)
+        project: Optional Project to scope the statement to - used for a
+            per-project P&L instead of the company-wide one
+
+    Returns:
+        Dict with revenue_data, expense_data, total_revenue, total_expenses,
+        net_income
+    """
+    if as_of_date is None:
+        as_of_date = timezone.now().date()
+
+    revenue_accounts = Account.objects.filter(
+        account_type__code='revenue',
+        is_active=True
+    ).select_related('account_type')
+
+    expense_accounts = Account.objects.filter(
+        account_type__code='expense',
+        is_active=True
+    ).select_related('account_type')
+
+    revenue_data = []
+    total_revenue = Decimal('0.00')
+    for acc in revenue_accounts:
+        balance = acc.get_balance_at_date(as_of_date, project=project)
+        if balance != 0:
+            revenue_data.append({'account': acc, 'balance': abs(balance)})
+            total_revenue += abs(balance)
+
+    expense_data = []
+    total_expenses = Decimal('0.00')
+    for acc in expense_accounts:
+        balance = acc.get_balance_at_date(as_of_date, project=project)
+        if balance != 0:
+            expense_data.append({'account': acc, 'balance': abs(balance)})
+            total_expenses += abs(balance)
+
+    return {
+        'as_of_date': as_of_date,
+        'revenue_data': revenue_data,
+        'expense_data': expense_data,
+        'total_revenue': total_revenue,
+        'total_expenses': total_expenses,
+        'net_income': total_revenue - total_expenses,
+    }

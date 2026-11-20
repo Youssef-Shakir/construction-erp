@@ -13,7 +13,7 @@ from apps.accounts.permissions import can_post_document, posting_permission_requ
 from apps.accounting.posting import PostingError
 from apps.advances.models import CashAdvance
 from apps.core.models import Attachment
-from .models import Expense, PaperReceipt
+from .models import Expense, ExpenseBatch, PaperReceipt
 from .forms import ExpenseForm, PaperReceiptForm
 
 
@@ -208,6 +208,67 @@ def expense_cancel(request, pk):
             messages.error(request, str(e))
 
     return redirect('expenses:detail', pk=pk)
+
+
+# Expense Batch views ("مستند مصاريف" - bulk expense lines against an advance)
+@login_required
+def batch_detail(request, pk):
+    """View an expense-lines document: its lines, shared journal entry, attachments."""
+    batch = get_object_or_404(
+        ExpenseBatch.objects.select_related('advance', 'advance__recipient', 'advance__project', 'journal_entry'),
+        pk=pk
+    )
+    lines = batch.lines.select_related('project', 'account').order_by('id')
+
+    content_type = ContentType.objects.get_for_model(ExpenseBatch)
+    attachments = Attachment.objects.filter(
+        content_type=content_type,
+        object_id=batch.pk
+    ).select_related('uploaded_by')
+
+    history_records = batch.history.all()[:50]
+
+    return render(request, 'expenses/batch_detail.html', {
+        'batch': batch,
+        'lines': lines,
+        'can_post': can_post_document(request.user),
+        'content_type_id': content_type.pk,
+        'object_id': batch.pk,
+        'attachments': attachments,
+        'history_records': history_records,
+    })
+
+
+@login_required
+@posting_permission_required
+def batch_post(request, pk):
+    """Post an expense-lines document - creates ONE journal entry for all its lines."""
+    batch = get_object_or_404(ExpenseBatch, pk=pk)
+
+    if request.method == 'POST':
+        try:
+            batch.post(user=request.user)
+            messages.success(request, f'تم ترحيل مستند المصاريف {batch.batch_number} بقيد واحد')
+        except PostingError as e:
+            messages.error(request, str(e))
+
+    return redirect('expenses:batch_detail', pk=pk)
+
+
+@login_required
+@posting_permission_required
+def batch_cancel(request, pk):
+    """Cancel a posted expense-lines document by reversing its single entry."""
+    batch = get_object_or_404(ExpenseBatch, pk=pk)
+
+    if request.method == 'POST':
+        try:
+            batch.cancel(user=request.user)
+            messages.success(request, f'تم إلغاء مستند المصاريف {batch.batch_number}')
+        except PostingError as e:
+            messages.error(request, str(e))
+
+    return redirect('expenses:batch_detail', pk=pk)
 
 
 # Paper Receipt views

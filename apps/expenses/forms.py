@@ -2,7 +2,7 @@
 Forms for expenses app.
 """
 from django import forms
-from .models import Expense, PaperReceipt
+from .models import Expense, ExpenseBatch, PaperReceipt
 from apps.core.models import Partner
 from apps.projects.models import Project
 from apps.advances.models import CashAdvance
@@ -14,7 +14,7 @@ class ExpenseForm(forms.ModelForm):
 
     class Meta:
         model = Expense
-        fields = ['date', 'project', 'advance', 'account', 'partner', 'amount', 'description']
+        fields = ['date', 'project', 'advance', 'account', 'partner', 'amount', 'description', 'receipt_number']
         widgets = {
             'date': forms.DateInput(attrs={'class': 'form-input', 'type': 'date'}),
             'project': forms.Select(attrs={'class': 'form-select'}),
@@ -23,6 +23,7 @@ class ExpenseForm(forms.ModelForm):
             'partner': forms.Select(attrs={'class': 'form-select'}),
             'amount': forms.NumberInput(attrs={'class': 'form-input money', 'step': '0.01', 'min': '0.01'}),
             'description': forms.Textarea(attrs={'class': 'form-input', 'rows': 2}),
+            'receipt_number': forms.TextInput(attrs={'class': 'form-input'}),
         }
 
     def __init__(self, *args, **kwargs):
@@ -47,6 +48,61 @@ class ExpenseForm(forms.ModelForm):
             is_active=True
         )
         self.fields['partner'].required = False
+
+
+class ExpenseLineForm(forms.ModelForm):
+    """
+    One row in a bulk expense entry sheet against a cash advance.
+    A blank row (nothing filled in) is simply ignored by the formset.
+    """
+
+    class Meta:
+        model = Expense
+        fields = ['date', 'project', 'account', 'description', 'receipt_number', 'amount']
+        widgets = {
+            'date': forms.DateInput(attrs={'class': 'form-input', 'type': 'date'}),
+            'project': forms.Select(attrs={'class': 'form-select'}),
+            'account': forms.Select(attrs={'class': 'form-select'}),
+            'description': forms.TextInput(attrs={'class': 'form-input'}),
+            'receipt_number': forms.TextInput(attrs={'class': 'form-input'}),
+            'amount': forms.NumberInput(attrs={'class': 'form-input money', 'step': '0.01', 'min': '0.01'}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        self.fields['date'].required = False
+        self.fields['project'].queryset = Project.objects.filter(status='active')
+        self.fields['project'].required = False
+        self.fields['account'].queryset = Account.objects.filter(
+            account_type__code='expense',
+            is_active=True
+        ).order_by('code')
+        self.fields['account'].required = False
+        self.fields['description'].required = False
+        self.fields['amount'].required = False
+
+
+class ExpenseBatchHeaderForm(forms.ModelForm):
+    """Header info for a bulk expense-lines document (مستند مصاريف)."""
+
+    class Meta:
+        model = ExpenseBatch
+        fields = ['date', 'memo']
+        widgets = {
+            'date': forms.DateInput(attrs={'class': 'form-input', 'type': 'date'}),
+            'memo': forms.TextInput(attrs={'class': 'form-input', 'placeholder': 'بيان عام للمستند (اختياري)'}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['memo'].required = False
+
+
+# Starts with a single row; more rows are added dynamically in the browser
+# (see advance_expense_lines.html) by cloning formset.empty_form and bumping
+# TOTAL_FORMS - not by rendering a fixed batch of blank rows server-side.
+ExpenseLineFormSet = forms.formset_factory(ExpenseLineForm, extra=1, can_delete=True)
 
 
 class PaperReceiptForm(forms.ModelForm):

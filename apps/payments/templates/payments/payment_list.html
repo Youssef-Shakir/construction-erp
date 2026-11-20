@@ -6,7 +6,7 @@
 {% block content %}
 <div>
     <!-- Filter bar -->
-    <div class="mb-4 flex items-center justify-between">
+    <div class="filter-bar mb-4">
         <form method="get" class="flex items-center gap-4">
             <input type="text" name="q" value="{{ query }}"
                    placeholder="بحث..."
@@ -24,7 +24,7 @@
             </select>
             <button type="submit" class="btn btn-secondary btn-sm">بحث</button>
         </form>
-        <div class="flex items-center gap-2">
+        <div class="flex items-center gap-2 flex-wrap w-full sm:w-auto">
             <a href="{% url 'payments:receive' %}" class="btn btn-primary btn-sm">+ استلام دفعة</a>
             <a href="{% url 'payments:pay' %}" class="btn btn-secondary btn-sm">+ صرف دفعة</a>
         </div>

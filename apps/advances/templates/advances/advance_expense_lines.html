@@ -1,0 +1,161 @@
+{% extends "base.html" %}
+
+{% block title %}إضافة مصاريف - {{ advance.advance_number }}{% endblock %}
+{% block page_title %}إضافة مصاريف على شكل فقرات{% endblock %}
+{% block breadcrumb %}
+<div class="breadcrumb">
+    <a href="{% url 'advances:list' %}">السلف</a>
+    <span class="separator">/</span>
+    <a href="{% url 'advances:detail' advance.pk %}">{{ advance.advance_number }}</a>
+    <span class="separator">/</span>
+    <span class="current">إضافة مصاريف</span>
+</div>
+{% endblock %}
+
+{% block content %}
+<div>
+    <div class="panel p-4 mb-4">
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
+            <div>
+                <div class="text-xs text-gray-500">المستلم</div>
+                <div class="font-medium">{{ advance.recipient.name }}</div>
+            </div>
+            <div>
+                <div class="text-xs text-gray-500">مشروع السلفة</div>
+                <div class="font-medium">{{ advance.project.name }}</div>
+            </div>
+            <div>
+                <div class="text-xs text-gray-500">مبلغ السلفة</div>
+                <div class="font-medium money">{{ advance.amount }}</div>
+            </div>
+            <div>
+                <div class="text-xs text-gray-500">المتبقي</div>
+                <div class="font-medium money text-orange-600">{{ advance.remaining }}</div>
+            </div>
+        </div>
+    </div>
+
+    <form method="post" enctype="multipart/form-data" class="form-card" id="lines-form">
+        {% csrf_token %}
+        {{ formset.management_form }}
+
+        <div class="form-section">
+            <div class="form-grid">
+                <div class="form-group">
+                    <label class="form-label">تاريخ المستند</label>
+                    {{ header_form.date }}
+                    {% if header_form.date.errors %}<p class="form-error">{{ header_form.date.errors.0 }}</p>{% endif %}
+                </div>
+                <div class="form-group">
+                    <label class="form-label">بيان عام (اختياري)</label>
+                    {{ header_form.memo }}
+                    {% if header_form.memo.errors %}<p class="form-error">{{ header_form.memo.errors.0 }}</p>{% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="p-4 sm:p-6">
+            <p class="text-sm text-gray-500 mb-4">
+                أدخل كل مصروف في فقرة مستقلة. المشروع اختياري بكل فقرة - إذا تركته فارغًا يُستخدم مشروع السلفة تلقائيًا،
+                ويمكن لكل فقرة أن تكون على مشروع مختلف. كل الفقرات تُحفظ بمستند واحد وتُرحّل معًا بقيد محاسبي واحد.
+            </p>
+
+            {% if formset.non_form_errors %}
+            <div class="alert alert-error mb-4">{{ formset.non_form_errors }}</div>
+            {% endif %}
+
+            <div class="table-scroll">
+                <table class="data-table" id="lines-table">
+                    <thead>
+                        <tr>
+                            <th class="w-10">#</th>
+                            <th>التاريخ</th>
+                            <th>المشروع</th>
+                            <th>حساب المصروف</th>
+                            <th>الوصف</th>
+                            <th>رقم الوصل</th>
+                            <th class="text-left">المبلغ</th>
+                            <th class="w-12"></th>
+                        </tr>
+                    </thead>
+                    <tbody id="lines-body">
+                        {% for line_form in formset %}
+                        <tr class="line-row">
+                            <td class="text-gray-400 text-xs">{{ forloop.counter }}</td>
+                            <td>{{ line_form.date }}</td>
+                            <td>{{ line_form.project }}</td>
+                            <td>{{ line_form.account }}</td>
+                            <td>{{ line_form.description }}</td>
+                            <td>{{ line_form.receipt_number }}</td>
+                            <td>{{ line_form.amount }}</td>
+                            <td class="text-center">
+                                {% if line_form.DELETE %}{{ line_form.DELETE }}{% endif %}
+                            </td>
+                        </tr>
+                        {% if line_form.errors %}
+                        <tr>
+                            <td colspan="8" class="bg-red-50 text-red-600 text-xs p-2">{{ line_form.errors }}</td>
+                        </tr>
+                        {% endif %}
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <button type="button" id="add-line-btn" class="btn btn-secondary btn-sm mt-3">+ إضافة سطر جديد</button>
+
+            <!-- Empty-form template used to clone new rows client-side -->
+            <table class="hidden">
+                <tbody id="empty-form-template" data-prefix="__prefix__">
+                    <tr class="line-row">
+                        <td class="text-gray-400 text-xs"></td>
+                        <td>{{ formset.empty_form.date }}</td>
+                        <td>{{ formset.empty_form.project }}</td>
+                        <td>{{ formset.empty_form.account }}</td>
+                        <td>{{ formset.empty_form.description }}</td>
+                        <td>{{ formset.empty_form.receipt_number }}</td>
+                        <td>{{ formset.empty_form.amount }}</td>
+                        <td class="text-center">{{ formset.empty_form.DELETE }}</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="form-section">
+            <h3 class="form-section-title">المرفقات</h3>
+            <div class="form-group">
+                <input type="file" name="attachments" multiple class="form-input">
+                <p class="text-xs text-gray-500 mt-1">مستندات إثبات لكامل الدفعة - إيصالات، فواتير، إلخ</p>
+            </div>
+        </div>
+
+        <div class="form-actions">
+            <a href="{% url 'advances:detail' advance.pk %}" class="btn btn-secondary">إلغاء</a>
+            <button type="submit" class="btn btn-primary">حفظ المستند كمسودة</button>
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+    var addBtn = document.getElementById('add-line-btn');
+    var body = document.getElementById('lines-body');
+    var totalFormsInput = document.querySelector('#id_lines-TOTAL_FORMS');
+    var templateBody = document.getElementById('empty-form-template');
+    if (!addBtn || !body || !totalFormsInput || !templateBody) return;
+
+    addBtn.addEventListener('click', function () {
+        var formIndex = parseInt(totalFormsInput.value, 10);
+        var html = templateBody.innerHTML.replace(/__prefix__/g, formIndex);
+        var wrapper = document.createElement('tbody');
+        wrapper.innerHTML = html;
+        var row = wrapper.querySelector('.line-row');
+        row.querySelector('td').textContent = formIndex + 1;
+        body.appendChild(row);
+        totalFormsInput.value = formIndex + 1;
+    });
+})();
+</script>
+{% endblock %}

@@ -6,7 +6,7 @@
 {% block content %}
 <div class="max-w-4xl">
     <!-- Header with status and actions -->
-    <div class="flex items-center justify-between mb-4">
+    <div class="flex items-center justify-between mb-4 flex-wrap gap-2">
         <div class="flex items-center gap-4">
             {% if expense.status == 'draft' %}
             <span class="badge badge-draft">مسودة</span>
@@ -23,7 +23,14 @@
             </span>
         </div>
         <div class="flex items-center gap-2">
-            {% if expense.status == 'draft' %}
+            {% if expense.batch %}
+                {% if expense.status == 'draft' %}
+                <a href="{% url 'expenses:edit' expense.pk %}" class="btn btn-secondary btn-sm">تعديل</a>
+                {% endif %}
+                <a href="{% url 'expenses:batch_detail' expense.batch.pk %}" class="btn btn-primary btn-sm">
+                    عرض مستند المصاريف {{ expense.batch.batch_number }}
+                </a>
+            {% elif expense.status == 'draft' %}
                 <a href="{% url 'expenses:edit' expense.pk %}" class="btn btn-secondary btn-sm">تعديل</a>
                 {% if can_post %}
                 <form method="post" action="{% url 'expenses:post' expense.pk %}" class="inline">
@@ -82,11 +89,26 @@
                 <dt class="text-xs text-gray-500">المبلغ</dt>
                 <dd class="font-semibold money">{{ expense.amount }}</dd>
             </div>
+            {% if expense.receipt_number %}
+            <div>
+                <dt class="text-xs text-gray-500">رقم الوصل</dt>
+                <dd class="font-mono">{{ expense.receipt_number }}</dd>
+            </div>
+            {% endif %}
         </dl>
         <div class="mt-4 pt-4 border-t">
             <dt class="text-xs text-gray-500 mb-1">الوصف</dt>
             <dd>{{ expense.description }}</dd>
         </div>
+        {% if expense.batch %}
+        <div class="mt-4 pt-4 border-t text-sm">
+            هذه فقرة ضمن
+            <a href="{% url 'expenses:batch_detail' expense.batch.pk %}" class="text-primary-600 hover:underline font-mono">
+                مستند المصاريف {{ expense.batch.batch_number }}
+            </a>
+            - تُرحّل وتُلغى كل فقراته معًا بقيد محاسبي واحد.
+        </div>
+        {% endif %}
     </div>
 
     <!-- Tabs -->
@@ -99,11 +121,11 @@
 
         <!-- Journal entry tab -->
         <div id="tab-entry" class="tab-content p-4">
-            {% if expense.journal_entry %}
+            {% if expense.effective_journal_entry %}
             <p class="text-sm text-gray-500 mb-2">
-                قيد رقم:
-                <a href="{% url 'accounting:entry_detail' expense.journal_entry.pk %}" class="text-primary-600 hover:underline font-mono">
-                    {{ expense.journal_entry.entry_number }}
+                {% if expense.batch %}قيد مستند المصاريف (مشترك لكل فقراته) رقم:{% else %}قيد رقم:{% endif %}
+                <a href="{% url 'accounting:entry_detail' expense.effective_journal_entry.pk %}" class="text-primary-600 hover:underline font-mono">
+                    {{ expense.effective_journal_entry.entry_number }}
                 </a>
             </p>
             <table class="data-table">
@@ -115,7 +137,7 @@
                     </tr>
                 </thead>
                 <tbody>
-                    {% for line in expense.journal_entry.lines.all %}
+                    {% for line in expense.effective_journal_entry.lines.all %}
                     <tr>
                         <td>{{ line.account.code }} - {{ line.account.name }}</td>
                         <td class="money">{% if line.debit > 0 %}{{ line.debit }}{% endif %}</td>

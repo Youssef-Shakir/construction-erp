@@ -5,6 +5,8 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.contrib.contenttypes.models import ContentType
+from django.core.exceptions import ValidationError
+from django.db import transaction
 from django.db.models import Q
 from django.core.paginator import Paginator
 from django.utils import timezone
@@ -135,7 +137,8 @@ def advance_detail(request, pk):
 
     # Get related expenses and returns
     from apps.expenses.models import Expense
-    expenses = Expense.objects.filter(advance=advance).select_related('account')
+    expenses = Expense.objects.filter(advance=advance).select_related('account', 'project', 'batch')
+    batches = advance.expense_batches.all()
     returns = advance.returns.all()
 
     # Get attachments
@@ -151,12 +154,107 @@ def advance_detail(request, pk):
     return render(request, 'advances/advance_detail.html', {
         'advance': advance,
         'expenses': expenses,
+        'batches': batches,
         'returns': returns,
         'can_post': can_post_document(request.user),
         'content_type_id': content_type.pk,
         'object_id': advance.pk,
         'attachments': attachments,
         'history_records': history_records,
+    })
+
+
+@login_required
+def advance_expense_lines(request, pk):
+    """
+    Add several expense line items against a posted advance in one submit,
+    instead of registering each expense separately. This creates a single
+    document (ExpenseBatch) that, once posted, records every line as ONE
+    journal entry (one debit per line, one aggregated credit) instead of a
+    separate entry per expense. Each line carries its own project, account,
+    description, receipt number (رقم الوصل) and amount.
+    """
+    from apps.expenses.models import Expense, ExpenseBatch
+    from apps.expenses.forms import ExpenseLineFormSet, ExpenseBatchHeaderForm
+
+    advance = get_object_or_404(CashAdvance, pk=pk)
+
+    if advance.status != 'posted':
+        messages.error(request, 'يجب ترحيل السلفة أولاً قبل إضافة مصاريف عليها')
+        return redirect('advances:detail', pk=pk)
+
+    if request.method == 'POST':
+        header_form = ExpenseBatchHeaderForm(request.POST)
+        formset = ExpenseLineFormSet(request.POST, prefix='lines')
+        if header_form.is_valid() and formset.is_valid():
+            new_expenses = []
+            row_errors = []
+
+            for i, form in enumerate(formset, start=1):
+                if form.cleaned_data.get('DELETE') or not form.has_changed():
+                    continue
+
+                data = form.cleaned_data
+                if not data.get('account') or not data.get('description') or not data.get('amount'):
+                    row_errors.append(f'الفقرة {i}: الحساب والوصف والمبلغ مطلوبة')
+                    continue
+
+                expense = Expense(
+                    date=data.get('date') or timezone.now().date(),
+                    project=data.get('project') or advance.project,
+                    advance=advance,
+                    account=data['account'],
+                    description=data['description'],
+                    receipt_number=data.get('receipt_number', ''),
+                    amount=data['amount'],
+                    amount_base=data['amount'],
+                )
+                try:
+                    expense.full_clean()
+                except ValidationError as e:
+                    row_errors.append(f'الفقرة {i}: ' + ' '.join(e.messages))
+                    continue
+                new_expenses.append(expense)
+
+            if row_errors:
+                for err in row_errors:
+                    messages.error(request, err)
+            elif not new_expenses:
+                messages.warning(request, 'لم يتم إدخال أي فقرة مصروف')
+            else:
+                with transaction.atomic():
+                    batch = header_form.save(commit=False)
+                    batch.advance = advance
+                    if not batch.date:
+                        batch.date = timezone.now().date()
+                    batch.created_by = request.user
+                    batch.updated_by = request.user
+                    batch.save()
+
+                    for expense in new_expenses:
+                        expense.batch = batch
+                        expense.created_by = request.user
+                        expense.updated_by = request.user
+                        expense.save()
+
+                    _save_attachments(request, ExpenseBatch, batch.pk)
+
+                messages.success(
+                    request,
+                    f'تم إنشاء مستند المصاريف {batch.batch_number} بـ {len(new_expenses)} فقرة (مسودة - بانتظار الترحيل)'
+                )
+                return redirect('expenses:batch_detail', pk=batch.pk)
+    else:
+        header_form = ExpenseBatchHeaderForm(initial={'date': timezone.now().date()})
+        formset = ExpenseLineFormSet(
+            prefix='lines',
+            initial=[{'date': timezone.now().date(), 'project': advance.project}],
+        )
+
+    return render(request, 'advances/advance_expense_lines.html', {
+        'advance': advance,
+        'header_form': header_form,
+        'formset': formset,
     })
 
 

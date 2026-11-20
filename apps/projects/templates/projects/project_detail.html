@@ -5,7 +5,7 @@
 
 {% block content %}
 <!-- Project header -->
-<div class="flex items-center justify-between mb-4">
+<div class="flex items-center justify-between mb-4 flex-wrap gap-2">
     <div class="flex items-center gap-4">
         {% if project.status == 'active' %}
         <span class="badge badge-posted">نشط</span>
@@ -18,7 +18,10 @@
         {% endif %}
         <span class="text-gray-500">{{ project.customer.name }}</span>
     </div>
-    <a href="{% url 'projects:edit' project.pk %}" class="btn btn-secondary">تعديل</a>
+    <div class="flex items-center gap-2">
+        <a href="{% url 'projects:report_pdf' project.pk %}" class="btn btn-secondary" target="_blank">تصدير تقرير PDF</a>
+        <a href="{% url 'projects:edit' project.pk %}" class="btn btn-secondary">تعديل</a>
+    </div>
 </div>
 
 <!-- Financial strip -->

@@ -97,6 +97,19 @@ def project(db, customer):
 
 
 @pytest.fixture
+def other_project(db, customer):
+    """A second project, distinct from `project`."""
+    return Project.objects.create(
+        code='PRJ002',
+        name='مشروع الفيلا',
+        customer=customer,
+        start_date=date.today() - timedelta(days=10),
+        budget=Decimal('200000.00'),
+        status='active'
+    )
+
+
+@pytest.fixture
 def posted_advance(db, accounts, journals, employee, project):
     """Create a posted advance."""
     advance = CashAdvance.objects.create(
@@ -376,3 +389,58 @@ class TestAdvanceLifecycle:
             posted_advance.cancel()
 
         assert 'مصروفات' in str(exc_info.value)
+
+
+class TestAdvanceAcrossMultipleProjects:
+    """An advance may fund expenses on more than one project."""
+
+    def test_expenses_on_different_projects_are_allowed(self, posted_advance, other_project, accounts):
+        """Expenses against the same advance can target different projects."""
+        expense_same_project = Expense.objects.create(
+            date=date.today(),
+            project=posted_advance.project,
+            advance=posted_advance,
+            account=accounts['expense'],
+            description='مصروف على مشروع السلفة',
+            amount=Decimal('3000.00'),
+            amount_base=Decimal('3000.00'),
+        )
+        expense_same_project.full_clean()
+        expense_same_project.post()
+
+        expense_other_project = Expense.objects.create(
+            date=date.today(),
+            project=other_project,
+            advance=posted_advance,
+            account=accounts['expense'],
+            description='مصروف على مشروع آخر من نفس السلفة',
+            amount=Decimal('2000.00'),
+            amount_base=Decimal('2000.00'),
+        )
+        # Should not raise, even though other_project != posted_advance.project
+        expense_other_project.full_clean()
+        expense_other_project.post()
+
+        assert other_project != posted_advance.project
+
+        # Advance settlement sums expenses regardless of their project
+        assert posted_advance.total_expenses == Decimal('5000.00')
+        assert posted_advance.remaining == Decimal('5000.00')
+
+        # Each project only sees its own share
+        assert posted_advance.project.total_expenses == Decimal('3000.00')
+        assert other_project.total_expenses == Decimal('2000.00')
+
+    def test_expense_without_project_defaults_to_advance_project(self, posted_advance, accounts):
+        """Leaving project blank still defaults to the advance's project."""
+        expense = Expense.objects.create(
+            date=date.today(),
+            advance=posted_advance,
+            account=accounts['expense'],
+            description='مصروف بدون مشروع محدد',
+            amount=Decimal('1000.00'),
+            amount_base=Decimal('1000.00'),
+        )
+        expense.full_clean()
+
+        assert expense.project == posted_advance.project

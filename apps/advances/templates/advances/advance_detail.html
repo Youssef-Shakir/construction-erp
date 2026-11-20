@@ -6,7 +6,7 @@
 {% block content %}
 <div class="max-w-4xl">
     <!-- Header with status and actions -->
-    <div class="flex items-center justify-between mb-4">
+    <div class="flex items-center justify-between mb-4 flex-wrap gap-2">
         <div class="flex items-center gap-4">
             {% if advance.status == 'draft' %}
             <span class="badge badge-draft">مسودة</span>
@@ -102,6 +102,7 @@
     <div class="panel">
         <div class="tabs">
             <button class="tab active" data-tab="expenses">المصروفات ({{ expenses.count }})</button>
+            <button class="tab" data-tab="batches">مستندات المصاريف ({{ batches.count }})</button>
             <button class="tab" data-tab="returns">المردودات ({{ returns.count }})</button>
             <button class="tab" data-tab="entry">القيد المحاسبي</button>
             <button class="tab" data-tab="attachments">المرفقات ({{ attachments.count }})</button>
@@ -116,9 +117,12 @@
                     <tr>
                         <th>رقم المصروف</th>
                         <th>التاريخ</th>
+                        <th>المشروع</th>
                         <th>الحساب</th>
+                        <th>رقم الوصل</th>
                         <th class="text-left">المبلغ</th>
                         <th>الحالة</th>
+                        <th>المستند</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -130,13 +134,30 @@
                             </a>
                         </td>
                         <td>{{ expense.date|date:"Y-m-d" }}</td>
+                        <td>
+                            {% if expense.project %}
+                            <a href="{% url 'projects:detail' expense.project.pk %}" class="text-primary-600 hover:underline">{{ expense.project.name }}</a>
+                            {% else %}
+                            <span class="text-gray-400">—</span>
+                            {% endif %}
+                        </td>
                         <td>{{ expense.account.name }}</td>
+                        <td class="font-mono text-xs">{{ expense.receipt_number|default:"—" }}</td>
                         <td class="money">{{ expense.amount }}</td>
                         <td>
                             {% if expense.status == 'posted' %}
                             <span class="badge badge-posted">مرحّل</span>
+                            {% elif expense.status == 'cancelled' %}
+                            <span class="badge badge-cancelled">ملغي</span>
                             {% else %}
                             <span class="badge badge-draft">مسودة</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if expense.batch %}
+                            <a href="{% url 'expenses:batch_detail' expense.batch.pk %}" class="text-primary-600 hover:underline font-mono text-xs">{{ expense.batch.batch_number }}</a>
+                            {% else %}
+                            <span class="text-gray-400 text-xs">فردي</span>
                             {% endif %}
                         </td>
                     </tr>
@@ -147,9 +168,52 @@
             <p class="text-gray-500 text-sm">لا يوجد مصروفات مرتبطة</p>
             {% endif %}
             {% if advance.status == 'posted' and advance.remaining > 0 %}
-            <div class="mt-4">
-                <a href="{% url 'expenses:create' %}?advance={{ advance.pk }}" class="btn btn-secondary btn-sm">+ إضافة مصروف</a>
+            <div class="mt-4 flex items-center gap-2">
+                <a href="{% url 'advances:expense_lines' advance.pk %}" class="btn btn-primary btn-sm">+ إضافة مصاريف (فقرات)</a>
+                <a href="{% url 'expenses:create' %}?advance={{ advance.pk }}" class="btn btn-secondary btn-sm">+ إضافة مصروف واحد</a>
             </div>
+            {% endif %}
+        </div>
+
+        <!-- Expense batches tab -->
+        <div id="tab-batches" class="tab-content p-4 hidden">
+            {% if batches %}
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>رقم المستند</th>
+                        <th>التاريخ</th>
+                        <th>عدد الفقرات</th>
+                        <th class="text-left">الإجمالي</th>
+                        <th>الحالة</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for batch in batches %}
+                    <tr>
+                        <td>
+                            <a href="{% url 'expenses:batch_detail' batch.pk %}" class="text-primary-600 hover:underline font-mono">
+                                {{ batch.batch_number }}
+                            </a>
+                        </td>
+                        <td>{{ batch.date|date:"Y-m-d" }}</td>
+                        <td>{{ batch.line_count }}</td>
+                        <td class="money">{{ batch.total_amount }}</td>
+                        <td>
+                            {% if batch.status == 'posted' %}
+                            <span class="badge badge-posted">مرحّل</span>
+                            {% elif batch.status == 'cancelled' %}
+                            <span class="badge badge-cancelled">ملغي</span>
+                            {% else %}
+                            <span class="badge badge-draft">مسودة</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <p class="text-gray-500 text-sm">لا يوجد مستندات مصاريف - استخدم "إضافة مصاريف (فقرات)" لإنشاء مستند بعدة فقرات يُرحّل بقيد واحد</p>
             {% endif %}
         </div>
 

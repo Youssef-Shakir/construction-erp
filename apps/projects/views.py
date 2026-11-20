@@ -6,6 +6,10 @@ from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.db.models import Q
 from django.core.paginator import Paginator
+from django.http import HttpResponse
+from django.template.loader import render_to_string
+from django.utils import timezone
+from django.utils.dateparse import parse_date
 
 from .models import Project
 from .forms import ProjectForm
@@ -128,3 +132,46 @@ def project_detail(request, pk):
     }
 
     return render(request, 'projects/project_detail.html', context)
+
+
+@login_required
+def project_report_pdf(request, pk):
+    """
+    Per-project financial report (PDF): project summary strip plus a
+    project-scoped income statement (revenue/expense accounts, net income).
+    Linked from the project page and from the P&L report.
+    """
+    from apps.core.models import CompanySettings
+    from apps.accounting.posting import get_income_statement
+
+    project = get_object_or_404(Project.objects.select_related('customer'), pk=pk)
+    company = CompanySettings.get_settings()
+
+    as_of_date = parse_date(request.GET.get('as_of_date', '')) or timezone.now().date()
+    statement = get_income_statement(as_of_date, project=project)
+
+    html_string = render_to_string('projects/project_report_pdf.html', {
+        'project': project,
+        'company': company,
+        'as_of_date': as_of_date,
+        **statement,
+    })
+
+    try:
+        from weasyprint import HTML, CSS
+        from weasyprint.text.fonts import FontConfiguration
+
+        font_config = FontConfiguration()
+        html = HTML(string=html_string)
+        css = CSS(string='''
+            @page { size: A4; margin: 1.5cm; }
+            body { font-family: Arial, sans-serif; direction: rtl; }
+        ''', font_config=font_config)
+
+        pdf = html.write_pdf(stylesheets=[css], font_config=font_config)
+
+        response = HttpResponse(pdf, content_type='application/pdf')
+        response['Content-Disposition'] = f'inline; filename="project_{project.code}_report.pdf"'
+        return response
+    except ImportError:
+        return HttpResponse(html_string)

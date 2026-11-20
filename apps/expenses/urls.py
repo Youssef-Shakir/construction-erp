@@ -15,6 +15,11 @@ urlpatterns = [
     path('<int:pk>/post/', views.expense_post, name='post'),
     path('<int:pk>/cancel/', views.expense_cancel, name='cancel'),
 
+    # Expense Batches (مستندات مصاريف - فقرات على سلفة)
+    path('batches/<int:pk>/', views.batch_detail, name='batch_detail'),
+    path('batches/<int:pk>/post/', views.batch_post, name='batch_post'),
+    path('batches/<int:pk>/cancel/', views.batch_cancel, name='batch_cancel'),
+
     # Paper Receipts
     path('receipts/', views.receipt_list, name='receipts'),
     path('receipts/new/', views.receipt_create, name='receipt_create'),

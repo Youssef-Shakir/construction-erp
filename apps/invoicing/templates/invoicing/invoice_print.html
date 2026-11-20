@@ -1,3 +1,4 @@
+{% load erp_extras %}
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
@@ -234,7 +235,7 @@
         <div class="label">إجمالي المبلغ</div>
         <div class="amount">
             <span class="currency">{{ company.currency_symbol }}</span>
-            {{ invoice.amount }}
+            {{ invoice.amount|thousands }}
         </div>
     </div>
 
@@ -242,15 +243,15 @@
     <div class="payment-status">
         <div class="status-box total">
             <div class="label">إجمالي الفاتورة</div>
-            <div class="value">{{ invoice.amount }}</div>
+            <div class="value">{{ invoice.amount|thousands }}</div>
         </div>
         <div class="status-box paid">
             <div class="label">المدفوع</div>
-            <div class="value">{{ invoice.amount_paid }}</div>
+            <div class="value">{{ invoice.amount_paid|thousands }}</div>
         </div>
         <div class="status-box remaining">
             <div class="label">المتبقي</div>
-            <div class="value">{{ invoice.amount_remaining }}</div>
+            <div class="value">{{ invoice.amount_remaining|thousands }}</div>
         </div>
     </div>
     {% endif %}

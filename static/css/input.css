@@ -28,7 +28,24 @@
 @layer components {
   /* Sidebar styles */
   .sidebar {
-    @apply fixed top-0 right-0 h-screen w-56 bg-gray-900 text-gray-100 overflow-y-auto;
+    @apply fixed top-0 right-0 h-screen w-56 bg-gray-900 text-gray-100 overflow-y-auto z-50
+           transform translate-x-full transition-transform duration-200 ease-in-out
+           lg:translate-x-0;
+  }
+
+  .sidebar.is-open {
+    @apply translate-x-0;
+  }
+
+  /* Dark overlay shown behind the mobile drawer */
+  .sidebar-overlay {
+    @apply fixed inset-0 bg-black/40 z-40 lg:hidden;
+  }
+
+  /* Hamburger / menu toggle button (mobile only) */
+  .menu-toggle {
+    @apply lg:hidden inline-flex items-center justify-center w-9 h-9 -mr-2 text-gray-600
+           hover:text-gray-900 hover:bg-gray-100 rounded-sm;
   }
 
   .sidebar-link {
@@ -45,7 +62,12 @@
 
   /* Content area */
   .main-content {
-    @apply mr-56 min-h-screen bg-gray-50;
+    @apply mr-0 lg:mr-56 min-h-screen bg-gray-50;
+  }
+
+  /* Horizontal scroll container for wide tables on small screens */
+  .table-scroll {
+    @apply w-full overflow-x-auto;
   }
 
   /* Card / Panel */
@@ -80,7 +102,7 @@
   }
 
   .form-section {
-    @apply p-6 border-b border-gray-100;
+    @apply p-4 sm:p-6 border-b border-gray-100;
   }
 
   .form-section:last-of-type {
@@ -92,7 +114,7 @@
   }
 
   .form-grid {
-    @apply grid grid-cols-2 gap-4;
+    @apply grid grid-cols-1 sm:grid-cols-2 gap-4;
   }
 
   .form-group {
@@ -100,7 +122,7 @@
   }
 
   .form-actions {
-    @apply flex items-center justify-between p-6 bg-gray-50 border-t border-gray-200;
+    @apply flex flex-wrap items-center justify-between gap-3 p-4 sm:p-6 bg-gray-50 border-t border-gray-200;
   }
 
   /* Breadcrumb */
@@ -265,7 +287,7 @@
 
   /* Filter bar */
   .filter-bar {
-    @apply flex items-center gap-4 p-4 bg-white border-b border-gray-200;
+    @apply flex flex-wrap items-center gap-3 p-4 bg-white border-b border-gray-200;
   }
 
   /* Tabs */
@@ -306,7 +328,7 @@
 @layer utilities {
   /* Financial summary strip */
   .financial-strip {
-    @apply grid grid-cols-6 gap-px bg-gray-200;
+    @apply grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-px bg-gray-200;
   }
 
   .financial-strip-item {
@@ -319,5 +341,36 @@
 
   .financial-strip-value {
     @apply text-lg font-semibold tabular-nums;
+  }
+}
+
+/*
+ * Mobile overflow fix for filter/search rows.
+ *
+ * List pages share one pattern: ".filter-bar" holding a <form> of
+ * fixed-width inputs (w-64/w-48/w-40/w-32) plus an action button. The form
+ * itself didn't wrap, so on a phone the row - and the table below it -
+ * overflowed the viewport instead of showing.
+ *
+ * NOTE: keep these selectors scoped to the dedicated ".filter-bar" class,
+ * not bare Tailwind utility combinations like ".flex.items-center" - mixing
+ * those into hand-written selectors previously tripped up the CSS minifier
+ * (cssnano's rule-merging) into corrupting unrelated component rules.
+ */
+@media (max-width: 639px) {
+  .filter-bar form {
+    flex-wrap: wrap;
+    width: 100%;
+  }
+
+  .filter-bar form .form-input,
+  .filter-bar form .form-select {
+    width: 100%;
+    flex: 1 1 140px;
+  }
+
+  .filter-bar > a {
+    width: 100%;
+    justify-content: center;
   }
 }

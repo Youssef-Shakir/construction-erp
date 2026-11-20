@@ -23,7 +23,7 @@ from .forms import (
     LedgerFilterForm,
     TrialBalanceFilterForm,
 )
-from .posting import create_journal_entry, reverse_entry, get_trial_balance, PostingError
+from .posting import create_journal_entry, reverse_entry, get_trial_balance, get_income_statement, PostingError
 
 
 # Chart of Accounts Views
@@ -337,51 +337,33 @@ def trial_balance(request):
 @login_required
 @accountant_required
 def income_statement(request):
-    """Income statement (profit and loss) report."""
+    """Income statement (profit and loss) report - company-wide, or scoped to one project."""
+    from apps.projects.models import Project
+
     form = TrialBalanceFilterForm(request.GET or None)
     as_of_date = timezone.now().date()
 
     if form.is_valid() and form.cleaned_data.get('as_of_date'):
         as_of_date = form.cleaned_data['as_of_date']
 
-    # Get revenue and expense accounts with balances
-    revenue_accounts = Account.objects.filter(
-        account_type__code='revenue',
-        is_active=True
-    ).select_related('account_type')
+    project = None
+    project_id = request.GET.get('project', '')
+    if project_id.isdigit():
+        project = Project.objects.filter(pk=project_id).first()
 
-    expense_accounts = Account.objects.filter(
-        account_type__code='expense',
-        is_active=True
-    ).select_related('account_type')
-
-    # Calculate balances
-    revenue_data = []
-    total_revenue = Decimal('0.00')
-    for acc in revenue_accounts:
-        balance = acc.get_balance_at_date(as_of_date) if as_of_date else acc.balance
-        if balance != 0:
-            revenue_data.append({'account': acc, 'balance': abs(balance)})
-            total_revenue += abs(balance)
-
-    expense_data = []
-    total_expenses = Decimal('0.00')
-    for acc in expense_accounts:
-        balance = acc.get_balance_at_date(as_of_date) if as_of_date else acc.balance
-        if balance != 0:
-            expense_data.append({'account': acc, 'balance': abs(balance)})
-            total_expenses += abs(balance)
-
-    net_income = total_revenue - total_expenses
+    data = get_income_statement(as_of_date, project=project)
 
     return render(request, 'accounting/income_statement.html', {
         'form': form,
         'as_of_date': as_of_date,
-        'revenue_data': revenue_data,
-        'expense_data': expense_data,
-        'total_revenue': total_revenue,
-        'total_expenses': total_expenses,
-        'net_income': net_income,
+        'revenue_data': data['revenue_data'],
+        'expense_data': data['expense_data'],
+        'total_revenue': data['total_revenue'],
+        'total_expenses': data['total_expenses'],
+        'net_income': data['net_income'],
+        'projects': Project.objects.order_by('code'),
+        'project_id': project_id,
+        'selected_project': project,
     })
 
 

@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token }}">
     <title>{% block title %}{% endblock %} | نظام المحاسبة</title>
-    <link rel="stylesheet" href="{% static 'css/output.css' %}">
+    <link rel="stylesheet" href="{% static 'css/output.css' %}?v=20260906b">
     {% block extra_css %}{% endblock %}
 </head>
 <body class="bg-gray-50 text-gray-900 text-sm">
@@ -14,17 +14,25 @@
     <!-- Sidebar -->
     {% include "partials/sidebar.html" %}
 
+    <!-- Mobile drawer overlay -->
+    <div id="sidebar-overlay" class="sidebar-overlay" hidden></div>
+
     <!-- Main Content -->
     <main class="main-content">
         <!-- Top Bar -->
-        <header class="bg-white border-b border-gray-200 px-6 py-3">
-            <div class="flex items-center justify-between">
-                <div>
-                    <h1 class="text-lg font-semibold text-gray-900">{% block page_title %}{% endblock %}</h1>
-                    {% block breadcrumb %}{% endblock %}
+        <header class="bg-white border-b border-gray-200 px-4 sm:px-6 py-3">
+            <div class="flex items-center justify-between gap-3">
+                <div class="flex items-center gap-2 min-w-0">
+                    <button type="button" id="menu-toggle" class="menu-toggle" aria-label="القائمة">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+                    </button>
+                    <div class="min-w-0">
+                        <h1 class="text-base sm:text-lg font-semibold text-gray-900 truncate">{% block page_title %}{% endblock %}</h1>
+                        {% block breadcrumb %}{% endblock %}
+                    </div>
                 </div>
-                <div class="flex items-center gap-4">
-                    <span class="text-sm text-gray-600">{{ user.get_full_name|default:user.email }}</span>
+                <div class="flex items-center gap-3 shrink-0">
+                    <span class="hidden sm:inline text-sm text-gray-600">{{ user.get_full_name|default:user.email }}</span>
                     <a href="{% url 'accounts:logout' %}" class="text-sm text-gray-500 hover:text-gray-700">خروج</a>
                 </div>
             </div>
@@ -34,7 +42,7 @@
         {% include "partials/messages.html" %}
 
         <!-- Page Content -->
-        <div class="p-6">
+        <div class="p-4 sm:p-6">
             {% block content %}{% endblock %}
         </div>
     </main>
@@ -48,7 +56,7 @@
     <!-- HTMX -->
     <script src="https://unpkg.com/htmx.org@1.9.10"></script>
 
-    <!-- Keyboard shortcuts -->
+    <!-- Keyboard shortcuts + mobile UI -->
     <script>
         document.addEventListener('keydown', function(e) {
             // Ctrl+S to save forms
@@ -58,6 +66,70 @@
                 if (form) form.submit();
             }
         });
+
+        // Mobile sidebar drawer
+        (function () {
+            var sidebar = document.querySelector('.sidebar');
+            var overlay = document.getElementById('sidebar-overlay');
+            var toggle = document.getElementById('menu-toggle');
+            if (!sidebar || !overlay || !toggle) return;
+
+            function open() {
+                sidebar.classList.add('is-open');
+                overlay.hidden = false;
+            }
+            function close() {
+                sidebar.classList.remove('is-open');
+                overlay.hidden = true;
+            }
+            toggle.addEventListener('click', function () {
+                sidebar.classList.contains('is-open') ? close() : open();
+            });
+            overlay.addEventListener('click', close);
+            document.addEventListener('keydown', function (e) {
+                if (e.key === 'Escape') close();
+            });
+            // Close after navigating from a sidebar link on mobile
+            sidebar.addEventListener('click', function (e) {
+                if (e.target.closest('a') && window.innerWidth < 1024) close();
+            });
+            window.addEventListener('resize', function () {
+                if (window.innerWidth >= 1024) close();
+            });
+        })();
+
+        // Make wide tables scroll horizontally on small screens
+        (function () {
+            document.querySelectorAll('table').forEach(function (t) {
+                if (t.closest('.table-scroll') || t.closest('.overflow-x-auto')) return;
+                var wrap = document.createElement('div');
+                wrap.className = 'table-scroll';
+                t.parentNode.insertBefore(wrap, t);
+                wrap.appendChild(t);
+            });
+        })();
+
+        // Add thousand separators to every displayed amount (".money"),
+        // always as 1,234,567.89 regardless of locale - server-rendered
+        // numbers stay plain (e.g. for edits/exports); this only touches
+        // display text. Leaf elements only, so inputs/nested markup are safe.
+        (function () {
+            function withThousands(text) {
+                var trimmed = text.trim();
+                if (!/^-?\d+(\.\d+)?$/.test(trimmed)) return null;
+                var negative = trimmed.charAt(0) === '-';
+                if (negative) trimmed = trimmed.slice(1);
+                var parts = trimmed.split('.');
+                parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+                return (negative ? '-' : '') + parts.join('.');
+            }
+
+            document.querySelectorAll('.money').forEach(function (el) {
+                if (el.children.length > 0) return;
+                var formatted = withThousands(el.textContent);
+                if (formatted !== null) el.textContent = formatted;
+            });
+        })();
     </script>
 
     {% block extra_js %}{% endblock %}

@@ -1,0 +1,189 @@
+{% extends "base.html" %}
+
+{% block title %}{{ batch.batch_number }}{% endblock %}
+{% block page_title %}مستند مصاريف: {{ batch.batch_number }}{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl">
+    <!-- Header with status and actions -->
+    <div class="flex items-center justify-between mb-4 flex-wrap gap-2">
+        <div class="flex items-center gap-4">
+            {% if batch.status == 'draft' %}
+            <span class="badge badge-draft">مسودة</span>
+            {% elif batch.status == 'posted' %}
+            <span class="badge badge-posted">مرحّل</span>
+            {% else %}
+            <span class="badge badge-cancelled">ملغي</span>
+            {% endif %}
+            <span class="text-xs px-2 py-0.5 rounded bg-purple-100 text-purple-700">فقرات سلفة</span>
+        </div>
+        <div class="flex items-center gap-2">
+            {% if batch.status == 'draft' and can_post %}
+            <form method="post" action="{% url 'expenses:batch_post' batch.pk %}" class="inline">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-primary btn-sm">ترحيل المستند (قيد واحد)</button>
+            </form>
+            {% elif batch.status == 'posted' and can_post %}
+            <form method="post" action="{% url 'expenses:batch_cancel' batch.pk %}" class="inline"
+                  onsubmit="return confirm('هل أنت متأكد من إلغاء هذا المستند؟ سيتم عكس القيد وإلغاء كل الفقرات.');">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-secondary btn-sm text-red-600">إلغاء</button>
+            </form>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Batch info -->
+    <div class="panel p-6 mb-6">
+        <dl class="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div>
+                <dt class="text-xs text-gray-500">التاريخ</dt>
+                <dd>{{ batch.date|date:"Y-m-d" }}</dd>
+            </div>
+            <div>
+                <dt class="text-xs text-gray-500">السلفة</dt>
+                <dd>
+                    <a href="{% url 'advances:detail' batch.advance.pk %}" class="text-primary-600 hover:underline">
+                        {{ batch.advance.advance_number }}
+                    </a>
+                </dd>
+            </div>
+            <div>
+                <dt class="text-xs text-gray-500">المستلم</dt>
+                <dd>{{ batch.advance.recipient.name }}</dd>
+            </div>
+            <div>
+                <dt class="text-xs text-gray-500">إجمالي المستند ({{ lines.count }} فقرة)</dt>
+                <dd class="font-semibold money">{{ batch.total_amount }}</dd>
+            </div>
+        </dl>
+        {% if batch.memo %}
+        <div class="mt-4 pt-4 border-t">
+            <dt class="text-xs text-gray-500 mb-1">البيان</dt>
+            <dd>{{ batch.memo }}</dd>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Tabs -->
+    <div class="panel">
+        <div class="tabs">
+            <button class="tab active" data-tab="lines">الفقرات ({{ lines.count }})</button>
+            <button class="tab" data-tab="entry">القيد المحاسبي</button>
+            <button class="tab" data-tab="attachments">المرفقات ({{ attachments.count }})</button>
+            <button class="tab" data-tab="history">السجل</button>
+        </div>
+
+        <!-- Lines tab -->
+        <div id="tab-lines" class="tab-content p-4">
+            {% if lines %}
+            <div class="table-scroll">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>رقم المصروف</th>
+                            <th>التاريخ</th>
+                            <th>المشروع</th>
+                            <th>الحساب</th>
+                            <th>الوصف</th>
+                            <th>رقم الوصل</th>
+                            <th class="text-left">المبلغ</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for line in lines %}
+                        <tr>
+                            <td>
+                                <a href="{% url 'expenses:detail' line.pk %}" class="text-primary-600 hover:underline font-mono">
+                                    {{ line.expense_number }}
+                                </a>
+                            </td>
+                            <td>{{ line.date|date:"Y-m-d" }}</td>
+                            <td>
+                                {% if line.project %}
+                                <a href="{% url 'projects:detail' line.project.pk %}" class="text-primary-600 hover:underline">{{ line.project.name }}</a>
+                                {% else %}
+                                <span class="text-gray-400">—</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ line.account.name }}</td>
+                            <td class="max-w-xs truncate">{{ line.description }}</td>
+                            <td class="font-mono text-xs">{{ line.receipt_number|default:"—" }}</td>
+                            <td class="money">{{ line.amount }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                    <tfoot>
+                        <tr class="font-semibold">
+                            <td colspan="6" class="text-left">الإجمالي</td>
+                            <td class="money">{{ batch.total_amount }}</td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+            {% else %}
+            <p class="text-gray-500 text-sm">لا يوجد فقرات</p>
+            {% endif %}
+        </div>
+
+        <!-- Journal entry tab -->
+        <div id="tab-entry" class="tab-content p-4 hidden">
+            {% if batch.journal_entry %}
+            <p class="text-sm text-gray-500 mb-2">
+                قيد واحد لكل فقرات المستند - رقم:
+                <a href="{% url 'accounting:entry_detail' batch.journal_entry.pk %}" class="text-primary-600 hover:underline font-mono">
+                    {{ batch.journal_entry.entry_number }}
+                </a>
+            </p>
+            <div class="table-scroll">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>الحساب</th>
+                            <th>المشروع</th>
+                            <th class="text-left">مدين</th>
+                            <th class="text-left">دائن</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for jline in batch.journal_entry.lines.all %}
+                        <tr>
+                            <td>{{ jline.account.code }} - {{ jline.account.name }}</td>
+                            <td>{{ jline.project.name|default:"—" }}</td>
+                            <td class="money">{% if jline.debit > 0 %}{{ jline.debit }}{% endif %}</td>
+                            <td class="money">{% if jline.credit > 0 %}{{ jline.credit }}{% endif %}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <p class="text-gray-500 text-sm">لم يتم إنشاء قيد محاسبي بعد - رحّل المستند لإنشاء قيد واحد لكل فقراته</p>
+            {% endif %}
+        </div>
+
+        <!-- Attachments tab -->
+        <div id="tab-attachments" class="tab-content p-4 hidden">
+            {% include "partials/attachment_tab.html" %}
+        </div>
+
+        <!-- History tab -->
+        <div id="tab-history" class="tab-content p-4 hidden">
+            {% include "partials/history_tab.html" %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.querySelectorAll('.tab').forEach(tab => {
+    tab.addEventListener('click', function() {
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.tab-content').forEach(c => c.classList.add('hidden'));
+        this.classList.add('active');
+        document.getElementById('tab-' + this.dataset.tab).classList.remove('hidden');
+    });
+});
+</script>
+{% endblock %}

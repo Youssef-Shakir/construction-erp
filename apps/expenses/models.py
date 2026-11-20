@@ -9,6 +9,7 @@ from decimal import Decimal
 from django.db import models, transaction
 from django.conf import settings
 from django.core.exceptions import ValidationError
+from django.utils import timezone
 from simple_history.models import HistoricalRecords
 
 from apps.core.models import AuditMixin, Partner
@@ -16,6 +17,157 @@ from apps.projects.models import Project
 from apps.advances.models import CashAdvance
 from apps.accounting.models import Journal, JournalEntry, Account
 from apps.accounting.posting import create_journal_entry, reverse_entry, PostingError
+
+
+class ExpenseBatch(AuditMixin, models.Model):
+    """
+    A single accounting document that groups several expense lines charged
+    against one cash advance ("مستند مصاريف - فقرات").
+
+    Instead of every expense line owning its own journal entry, posting the
+    batch creates ONE journal entry: one debit line per expense line (each
+    keeping its own project/account/description/receipt number) and a single
+    aggregated credit line to the Advances-to-PMs control account.
+    """
+    STATUS_CHOICES = [
+        ('draft', 'مسودة'),
+        ('posted', 'مرحّل'),
+        ('cancelled', 'ملغي'),
+    ]
+
+    batch_number = models.CharField('رقم المستند', max_length=50, unique=True, blank=True)
+    advance = models.ForeignKey(
+        CashAdvance,
+        on_delete=models.PROTECT,
+        related_name='expense_batches',
+        verbose_name='السلفة',
+    )
+    date = models.DateField('التاريخ')
+    memo = models.CharField('البيان', max_length=255, blank=True)
+    status = models.CharField('الحالة', max_length=20, choices=STATUS_CHOICES, default='draft')
+
+    # Accounting link - the ONE entry that records every line in this batch
+    journal_entry = models.OneToOneField(
+        JournalEntry,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='expense_batch',
+        verbose_name='القيد المحاسبي',
+    )
+
+    history = HistoricalRecords()
+
+    class Meta:
+        verbose_name = 'مستند مصاريف'
+        verbose_name_plural = 'مستندات المصاريف'
+        ordering = ['-date', '-batch_number']
+
+    def __str__(self):
+        return f'{self.batch_number} - {self.advance.advance_number}'
+
+    def save(self, *args, **kwargs):
+        if not self.batch_number:
+            last = ExpenseBatch.objects.order_by('-id').first()
+            next_num = (last.id + 1) if last else 1
+            self.batch_number = f'EXPB-{next_num:06d}'
+        super().save(*args, **kwargs)
+
+    @property
+    def total_amount(self):
+        """Sum of all line amounts, regardless of status."""
+        result = self.lines.aggregate(total=models.Sum('amount'))
+        return result['total'] or Decimal('0.00')
+
+    @property
+    def line_count(self):
+        return self.lines.count()
+
+    def post(self, user=None):
+        """
+        Post every line in this batch together as ONE journal entry:
+        - Debit: each line's expense account (its own project, amount)
+        - Credit: Advances to PMs (partner=advance.recipient), once, for the total
+        """
+        if self.status != 'draft':
+            raise PostingError('يمكن ترحيل المسودات فقط')
+
+        lines_qs = list(self.lines.all())
+        if not lines_qs:
+            raise PostingError('لا يوجد فقرات مصروفات في هذا المستند')
+
+        if self.advance.status != 'posted':
+            raise PostingError('السلفة يجب أن تكون مرحّلة')
+
+        total = sum((line.amount for line in lines_qs), Decimal('0.00'))
+        if total > self.advance.remaining:
+            raise PostingError(
+                f'إجمالي المستند ({total}) أكبر من المتبقي في السلفة ({self.advance.remaining})'
+            )
+
+        try:
+            credit_account = Account.objects.get(code='1200')  # Advances to PMs
+        except Account.DoesNotExist:
+            raise PostingError('الحسابات المطلوبة غير موجودة')
+
+        try:
+            journal = Journal.objects.get(code='CASH')
+        except Journal.DoesNotExist:
+            raise PostingError('يومية النقدية غير موجودة')
+
+        with transaction.atomic():
+            entry_lines = [
+                {
+                    'account': line.account,
+                    'debit': line.amount,
+                    'partner': line.partner,
+                    'project': line.project,
+                    'description': line.description[:100],
+                }
+                for line in lines_qs
+            ]
+            entry_lines.append({
+                'account': credit_account,
+                'credit': total,
+                'partner': self.advance.recipient,
+                'description': f'مصاريف سلفة - مستند {self.batch_number}',
+            })
+
+            entry = create_journal_entry(
+                journal=journal,
+                date=self.date,
+                lines=entry_lines,
+                reference=self.batch_number,
+                memo=self.memo or f'مصاريف سلفة {self.advance.advance_number} - {self.advance.recipient.name}',
+                user=user,
+                auto_post=True,
+            )
+
+            self.journal_entry = entry
+            self.status = 'posted'
+            self.save()
+
+            for line in lines_qs:
+                line.status = 'posted'
+                line.save()
+
+        return entry
+
+    def cancel(self, user=None):
+        """Cancel the batch by reversing its single shared journal entry."""
+        if self.status != 'posted':
+            raise PostingError('يمكن إلغاء المستندات المرحّلة فقط')
+
+        with transaction.atomic():
+            if self.journal_entry:
+                reverse_entry(self.journal_entry, timezone.now().date(), user)
+
+            self.status = 'cancelled'
+            self.save()
+
+            for line in self.lines.all():
+                line.status = 'cancelled'
+                line.save()
 
 
 class Expense(AuditMixin, models.Model):
@@ -53,6 +205,14 @@ class Expense(AuditMixin, models.Model):
         related_name='expenses',
         verbose_name='السلفة',
     )
+    batch = models.ForeignKey(
+        ExpenseBatch,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name='lines',
+        verbose_name='مستند الفقرات',
+    )
 
     # Expense details
     account = models.ForeignKey(
@@ -71,6 +231,7 @@ class Expense(AuditMixin, models.Model):
         verbose_name='المورد',
     )
     description = models.TextField('الوصف')
+    receipt_number = models.CharField('رقم الوصل', max_length=50, blank=True)
 
     # Amount fields
     amount = models.DecimalField('المبلغ', max_digits=18, decimal_places=2)
@@ -114,11 +275,10 @@ class Expense(AuditMixin, models.Model):
         if self.amount <= 0:
             raise ValidationError('المبلغ يجب أن يكون أكبر من صفر')
 
-        # If advance is set, project must match
-        if self.advance and self.project and self.advance.project != self.project:
-            raise ValidationError('المشروع يجب أن يتطابق مع مشروع السلفة')
-
-        # If advance is set, use its project
+        # An advance may fund expenses on any project, not only the project it
+        # was issued for. If the expense doesn't specify its own project,
+        # default it to the advance's project as a convenience; otherwise the
+        # PM's chosen project is kept as-is (no forced match).
         if self.advance and not self.project:
             self.project = self.advance.project
 
@@ -142,6 +302,19 @@ class Expense(AuditMixin, models.Model):
         else:
             return 'شركة'
 
+    @property
+    def effective_journal_entry(self):
+        """
+        The journal entry that actually recorded this expense: its own
+        entry, or - if it's a line in a bulk expense-lines document - the
+        batch's single shared entry.
+        """
+        if self.journal_entry:
+            return self.journal_entry
+        if self.batch_id:
+            return self.batch.journal_entry
+        return None
+
     def post(self, user=None):
         """
         Post the expense, creating the journal entry.
@@ -154,6 +327,9 @@ class Expense(AuditMixin, models.Model):
         - Debit: Expense account (project or none)
         - Credit: Cash
         """
+        if self.batch_id:
+            raise PostingError('هذا المصروف ضمن مستند مصاريف - يُرحّل المستند بالكامل من صفحته')
+
         if self.status != 'draft':
             raise PostingError('يمكن ترحيل المسودات فقط')
 
@@ -213,6 +389,9 @@ class Expense(AuditMixin, models.Model):
 
     def cancel(self, user=None):
         """Cancel the expense by reversing the journal entry."""
+        if self.batch_id:
+            raise PostingError('هذا المصروف ضمن مستند مصاريف - يُلغى المستند بالكامل من صفحته')
+
         if self.status != 'posted':
             raise PostingError('يمكن إلغاء المصروفات المرحّلة فقط')
 

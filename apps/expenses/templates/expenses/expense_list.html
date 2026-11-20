@@ -6,7 +6,7 @@
 {% block content %}
 <div>
     <!-- Filter bar -->
-    <div class="mb-4 flex items-center justify-between">
+    <div class="filter-bar mb-4">
         <form method="get" class="flex items-center gap-4">
             <input type="text" name="q" value="{{ query }}"
                    placeholder="بحث..."
@@ -40,6 +40,7 @@
                     <th>المشروع</th>
                     <th>الحساب</th>
                     <th>الوصف</th>
+                    <th>رقم الوصل</th>
                     <th class="text-left">المبلغ</th>
                     <th>الحالة</th>
                 </tr>
@@ -72,6 +73,7 @@
                     </td>
                     <td>{{ expense.account.name }}</td>
                     <td class="max-w-xs truncate">{{ expense.description }}</td>
+                    <td class="font-mono text-xs">{{ expense.receipt_number|default:"—" }}</td>
                     <td class="money">{{ expense.amount }}</td>
                     <td>
                         {% if expense.status == 'draft' %}

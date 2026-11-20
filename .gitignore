@@ -51,3 +51,8 @@ static/css/output.css
 .claude/settings.local.json
 # Scanner drop folder used in development
 scans/
+
+# Update script logs / DB backups (VPS)
+logs/
+backups/
+.update.lock

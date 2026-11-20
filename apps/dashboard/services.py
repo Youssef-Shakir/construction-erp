@@ -180,8 +180,13 @@ def project_summary(limit=8):
     return projects
 
 
+def _n(count, one, many):
+    """Arabic-friendly count phrase: 'فاتورة واحدة' / '3 فواتير'."""
+    return one if count == 1 else f'{count} {many}'
+
+
 def attention_items(user, today):
-    """Work queue: what someone should act on now."""
+    """Things to act on, written as plain sentences for a non-accountant owner."""
     from apps.accounts.permissions import can_manage_scan_inbox, can_post_document
     from apps.advances.models import CashAdvance
     from apps.core.attachments import inbox_items
@@ -191,72 +196,100 @@ def attention_items(user, today):
 
     items = []
 
-    def add(label, count, url, level='info', amount=None):
-        if count:
-            items.append({'label': label, 'count': count, 'amount': amount, 'url': url, 'level': level})
+    def add(text, url, action, level='info', amount=None):
+        items.append({'text': text, 'url': url, 'action': action, 'level': level, 'amount': amount})
 
     if can_post_document(user):
-        drafts = [
-            ('فواتير عملاء بانتظار الترحيل', Invoice.objects, 'invoicing:list'),
-            ('فواتير موردين بانتظار الترحيل', Bill.objects, 'bills:list'),
-            ('مدفوعات بانتظار الترحيل', Payment.objects, 'payments:list'),
-            ('سلف بانتظار الترحيل', CashAdvance.objects, 'advances:list'),
-            ('مصروفات بانتظار الترحيل', Expense.objects.filter(batch__isnull=True), 'expenses:list'),
-        ]
-        for label, qs, url_name in drafts:
-            agg = qs.filter(status='draft').aggregate(n=Count('pk'), amt=Sum('amount'))
-            add(label, agg['n'], reverse(url_name) + '?status=draft', 'info', agg['amt'])
-        add('مستندات مصاريف بانتظار الترحيل', ExpenseBatch.objects.filter(status='draft').count(),
-            reverse('advances:list'), 'info')
-
         overdue = with_outstanding(Invoice.objects.filter(due_date__lt=today)).aggregate(
             n=Count('pk'), amt=Sum('outstanding'))
-        add('فواتير عملاء متأخرة السداد', overdue['n'], reverse('accounting:receivables'), 'danger', overdue['amt'])
+        if overdue['n']:
+            add(f"{_n(overdue['n'], 'زبون تأخر', 'زبائن تأخروا')} في الدفع",
+                reverse('accounting:receivables'), 'تابع التحصيل', 'danger', overdue['amt'])
 
         due = with_outstanding(Bill.objects.filter(due_date__lte=today + timedelta(days=7))).aggregate(
             n=Count('pk'), amt=Sum('outstanding'))
-        add('فواتير موردين مستحقة خلال 7 أيام', due['n'], reverse('accounting:payables'), 'warning', due['amt'])
+        if due['n']:
+            add(f"{_n(due['n'], 'فاتورة مورد يجب دفعها', 'فواتير موردين يجب دفعها')} هذا الأسبوع",
+                reverse('accounting:payables'), 'عرض', 'warning', due['amt'])
+
+        drafts = sum(
+            qs.filter(status='draft').count()
+            for qs in (Invoice.objects, Bill.objects, Payment.objects, CashAdvance.objects,
+                       Expense.objects.filter(batch__isnull=True), ExpenseBatch.objects)
+        )
+        if drafts:
+            add(f"{_n(drafts, 'مستند لم يُعتمد بعد', 'مستندات لم تُعتمد بعد')}",
+                reverse('invoicing:list') + '?status=draft', 'راجع واعتمد', 'info')
 
         stale = CashAdvance.objects.filter(status='posted', date__lt=today - timedelta(days=30)).count()
-        add('سلف مفتوحة منذ أكثر من 30 يوماً', stale, reverse('advances:list') + '?status=posted', 'warning')
+        if stale:
+            add(f"{_n(stale, 'موظف لم يُسوِّ سلفته', 'موظفين لم يسوّوا سلفهم')} منذ أكثر من شهر",
+                reverse('advances:list') + '?status=posted', 'عرض', 'warning')
 
     if can_manage_scan_inbox(user):
-        add('ملفات في صندوق المسح بانتظار الربط', inbox_items().count(), reverse('core:scan_inbox'), 'info')
+        waiting = inbox_items().count()
+        if waiting:
+            add(f"{_n(waiting, 'ملف ممسوح ينتظر', 'ملفات ممسوحة تنتظر')} ربطه بمستند",
+                reverse('core:scan_inbox'), 'اربط الآن', 'info')
 
     return items
 
 
-def recent_documents(limit=10):
-    """Latest documents of every type, merged and sorted by creation time."""
+def recent_documents(limit=6):
+    """Latest activity, each row a short sentence ('دفعت لـ ...')."""
     from apps.advances.models import CashAdvance
     from apps.expenses.models import Expense
     from apps.invoicing.models import Bill, Invoice
     from apps.payments.models import Payment
 
+    def payment_text(p):
+        return f'استلام مبلغ من {p.partner.name}' if p.direction == 'inbound' else f'دفع مبلغ إلى {p.partner.name}'
+
+    # (queryset, sentence, url name, money flow: 'in' = money coming to the company)
     sources = [
-        (Invoice.objects.select_related('customer'), 'فاتورة', 'invoice_number', 'customer', 'invoicing:detail'),
-        (Bill.objects.select_related('supplier'), 'فاتورة مورد', 'bill_number', 'supplier', 'bills:detail'),
-        (Payment.objects.select_related('partner'), 'دفعة', 'payment_number', 'partner', 'payments:detail'),
-        (CashAdvance.objects.select_related('recipient'), 'سلفة', 'advance_number', 'recipient', 'advances:detail'),
-        (Expense.objects.select_related('partner'), 'مصروف', 'expense_number', 'partner', 'expenses:detail'),
+        (Invoice.objects.select_related('customer'), lambda d: f'فاتورة للزبون {d.customer.name}',
+         'invoicing:detail', lambda d: 'in'),
+        (Bill.objects.select_related('supplier'), lambda d: f'فاتورة من المورد {d.supplier.name}',
+         'bills:detail', lambda d: 'out'),
+        (Payment.objects.select_related('partner'), payment_text,
+         'payments:detail', lambda d: 'in' if d.direction == 'inbound' else 'out'),
+        (CashAdvance.objects.select_related('recipient'), lambda d: f'سلفة للموظف {d.recipient.name}',
+         'advances:detail', lambda d: 'out'),
+        (Expense.objects.all(), lambda d: f'مصروف: {d.description[:40]}',
+         'expenses:detail', lambda d: 'out'),
     ]
     rows = []
-    for qs, label, number_field, party_field, url_name in sources:
+    for qs, text, url_name, flow in sources:
         for doc in qs.order_by('-created_at')[:limit]:
-            party = getattr(doc, party_field)
             rows.append({
-                'type': label,
-                'number': getattr(doc, number_field),
-                'party': party.name if party else (getattr(doc, 'description', '') or '')[:40],
-                'date': doc.date,
+                'text': text(doc),
                 'amount': doc.amount,
-                'status': doc.status,
-                'status_label': doc.get_status_display(),
+                'flow': flow(doc),
+                'is_draft': doc.status == 'draft',
+                'is_cancelled': doc.status == 'cancelled',
                 'created_at': doc.created_at,
                 'url': reverse(url_name, args=[doc.pk]),
             })
     rows.sort(key=lambda r: r['created_at'], reverse=True)
     return rows[:limit]
+
+
+ARABIC_DAYS = ['الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت', 'الأحد']
+
+
+def arabic_date(d):
+    """'الجمعة 2026/11/20' - month names differ by country, numbers don't."""
+    return f'{ARABIC_DAYS[d.weekday()]} {d:%Y/%m/%d}'
+
+
+def _currency_symbol():
+    from apps.core.models import CompanySettings
+    return CompanySettings.get_settings().currency_symbol
+
+
+def greeting():
+    hour = timezone.localtime().hour
+    return 'صباح الخير' if hour < 12 else 'مساء الخير'
 
 
 def build_dashboard(user):
@@ -267,6 +300,9 @@ def build_dashboard(user):
     today = timezone.localdate()
     ctx = {
         'today': today,
+        'today_text': arabic_date(today),
+        'greeting': greeting(),
+        'currency': _currency_symbol(),
         'show_financials': can_view_reports(user),
         'attention': attention_items(user, today),
         'recent': recent_documents(),

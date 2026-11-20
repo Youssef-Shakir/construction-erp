@@ -400,56 +400,62 @@
 .notice-error { @apply bg-red-50 border-red-200 text-red-800; }
 
 /* ---------------------------------------------------------------------
- * Dashboard: dense strip + tables, 1px borders, no shadows/cards
+ * Home dashboard: built for a business owner, not an accountant.
+ * Larger type, plain words, big touch targets. 1px borders, no shadows.
  * ------------------------------------------------------------------- */
 @layer components {
-  .dash { @apply space-y-4 min-w-0; }
-  .dash .panel { @apply min-w-0 overflow-x-auto; }
-  .dash-toolbar { @apply flex flex-wrap items-center gap-2; }
-  .dash-date { @apply ms-auto text-xs text-gray-500; }
+  .home { @apply max-w-6xl mx-auto space-y-6 text-[15px] min-w-0; }
+  .home-hello h2 { @apply text-xl font-semibold text-gray-900; }
+  .home-hello p { @apply text-sm text-gray-500 mt-0.5; }
+  .home-title { @apply text-base font-semibold text-gray-800 mb-2; }
 
-  .kpi-strip {
-    @apply grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-px bg-gray-200 border border-gray-200;
+  .home-actions { @apply grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2; }
+  .home-action {
+    @apply flex flex-col items-center justify-center gap-2 text-center bg-white border border-gray-200
+           rounded-md px-2 py-4 min-h-[6.5rem] text-sm font-medium text-gray-800
+           hover:border-primary-500 hover:text-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500;
   }
-  .kpi { @apply flex flex-col gap-0.5 bg-white px-3 py-2.5 min-w-0 hover:bg-gray-50; }
-  .kpi-label { @apply text-xs text-gray-500; }
-  .kpi-value { @apply text-lg font-semibold text-gray-900 tabular-nums leading-tight text-right; }
-  .kpi-sub { @apply text-[11px] text-gray-500 truncate; }
+  .home-action svg { @apply w-7 h-7 text-primary-600; }
 
-  .dash-grid { @apply grid grid-cols-1 lg:grid-cols-2 gap-4; }
-  .dash-grid > * { @apply min-w-0; }
-  .dash-head { @apply flex items-center justify-between gap-2 px-3 h-9 border-b border-gray-200; }
-  .dash-head h2 { @apply text-sm font-semibold text-gray-800; }
-  .dash-count { @apply text-xs tabular-nums text-gray-500; }
-  .dash-link { @apply text-xs text-primary-600 hover:underline; }
-  .dash-empty { @apply px-3 py-6 text-center text-sm text-gray-500; }
-
-  .dash-table { @apply w-full text-sm; }
-  .dash-table th { @apply h-8 px-3 text-right text-xs font-medium text-gray-500 bg-gray-50 border-b border-gray-200; }
-  .dash-table td { @apply h-8 px-3 border-b border-gray-100 whitespace-nowrap; }
-  .dash-table tbody tr:hover { @apply bg-gray-50; }
-  .dash-table tfoot td { @apply font-semibold border-t border-gray-200 border-b-0; }
-  .dash-table .num { @apply text-left tabular-nums; }
-  .dash-table tr.is-late td:first-child { @apply text-red-700; }
-
-
-  .bar { @apply block w-full h-1 bg-gray-100 mt-1; }
-  .bar-fill { @apply block h-1 bg-primary-500; }
-  .bar-warn { @apply bg-yellow-500; }
-  .bar-late { @apply bg-red-500; }
-  .budget { @apply flex items-center gap-2; }
-  .budget .bar { @apply mt-0 flex-1; }
-
-  @media (max-width: 640px) {
-    .hide-sm { display: none; }
+  .home-money { @apply grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2; }
+  .money-tile {
+    @apply flex flex-col gap-1 bg-white border border-gray-200 rounded-md px-4 py-3 hover:border-primary-500 min-w-0;
   }
+  .money-tile-label { @apply text-sm text-gray-600; }
+  .money-tile-value { @apply text-2xl font-bold text-gray-900 tabular-nums; }
+  .money-tile-value small { @apply text-sm font-normal text-gray-500; }
+  .money-tile-note { @apply text-xs text-gray-500; }
+  .is-negative { @apply text-red-700; }
+
+  .home-panel { @apply bg-white border border-gray-200 rounded-md divide-y divide-gray-100 min-w-0; }
+  .home-empty { @apply px-4 py-6 text-center text-gray-500; }
+  .home-cols { @apply grid grid-cols-1 lg:grid-cols-2 gap-6; }
+  .home-cols > * { @apply min-w-0; }
+
+  .todo { @apply flex items-center gap-3 px-4 py-3; }
+  .todo-mark { @apply shrink-0 w-2.5 h-2.5 rounded-full; }
+  .todo-text { @apply flex-1 min-w-0 text-gray-800; }
+  .todo-amount { @apply block text-sm text-gray-500 mt-0.5; }
+
+  .row-link { @apply flex items-center gap-3 px-4 py-3 hover:bg-gray-50; }
+  .row-link.is-cancelled { @apply opacity-50; }
+  .row-main { @apply flex-1 min-w-0 flex flex-col; }
+  .row-title { @apply text-gray-900 truncate; }
+  .row-sub { @apply text-xs text-gray-500 mt-0.5; }
+  .row-amount { @apply shrink-0 font-semibold text-gray-900; }
+  .result { @apply shrink-0 text-sm font-semibold text-gray-500; }
+  .result.is-profit { @apply text-green-700; }
+  .result.is-loss { @apply text-red-700; }
+  .chip { @apply inline-block px-1.5 py-px rounded bg-yellow-100 text-yellow-800; }
+  .flow { @apply shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-base font-bold; }
 }
 
-/* Outside @layer: built dynamically (dot-{{ level }}) so must not be purged */
-.dot { @apply inline-block w-1.5 h-1.5 rounded-full me-2 align-middle; }
-.dot-info { @apply bg-primary-500; }
-.dot-warning { @apply bg-yellow-500; }
-.dot-danger { @apply bg-red-600; }
+/* Outside @layer: class names built in templates (todo-{{ level }}, flow-{{ flow }}) */
+.todo-info { @apply bg-primary-500; }
+.todo-warning { @apply bg-yellow-500; }
+.todo-danger { @apply bg-red-600; }
+.flow-in { @apply bg-green-50 text-green-700; }
+.flow-out { @apply bg-gray-100 text-gray-600; }
 
 /* The [hidden] attribute must win over component display rules (e.g. .btn) */
 [hidden] { display: none !important; }

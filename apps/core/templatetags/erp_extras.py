@@ -71,15 +71,6 @@ def can_delete_attachment(context, attachment):
     return bool(request) and check(request.user, attachment)
 
 
-@register.filter(name='index')
-def index(sequence, i):
-    """sequence|index:n -> sequence[n] (None when out of range)."""
-    try:
-        return sequence[int(i)]
-    except (IndexError, TypeError, ValueError, KeyError):
-        return None
-
-
 @register.filter(name='amount')
 def amount(value):
     """Money with exactly two decimals and thousand separators: 1,234.50"""

@@ -68,21 +68,27 @@ class TestDashboardServices:
         project_row = ctx['projects'][0]
         assert project_row.dash_revenue == D('1500')
         assert project_row.dash_receivable == D('1100')
-        labels = [i['label'] for i in ctx['attention']]
-        assert any('متأخرة' in l for l in labels)
-        assert any('بانتظار الترحيل' in l for l in labels)
+        texts = [i['text'] for i in ctx['attention']]
+        assert any('تأخر في الدفع' in t for t in texts)        # overdue customer
+        assert any('لم يُعتمد بعد' in t for t in texts)        # one draft invoice
+        overdue = next(i for i in ctx['attention'] if 'تأخر' in i['text'])
+        assert overdue['amount'] == D('600')
 
     def test_data_entry_sees_no_financials(self, data, client, django_user_model):
         client.force_login(_user(django_user_model, 'de@example.com', 'DataEntry'))
         resp = client.get(reverse('dashboard:home'))
         assert resp.status_code == 200
         assert not resp.context['show_financials']
-        assert 'النقدية والبنوك' not in resp.content.decode()
+        html = resp.content.decode()
+        assert 'المال المتوفر لديك' not in html
+        assert 'سجّل مصروفاً' in html  # actions are still there
 
     def test_dashboard_renders_for_manager(self, data, client, django_user_model):
         client.force_login(_user(django_user_model, 'boss@example.com', superuser=True))
         html = client.get(reverse('dashboard:home')).content.decode()
-        assert 'kpi-strip' in html and 'أعمار الذمم' in html and 'المشاريع النشطة' in html
+        for text in ('ماذا تريد أن تفعل؟', 'المال المتوفر لديك', 'لك عند الزبائن', 'يحتاج انتباهك', 'مشاريعك', 'آخر ما سُجّل'):
+            assert text in html
+        assert 'ربح' in html or 'خسارة' in html or 'لا حركة بعد' in html
 
 
 class TestPWA:

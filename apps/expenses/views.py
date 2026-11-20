@@ -13,23 +13,15 @@ from apps.accounts.permissions import can_post_document, posting_permission_requ
 from apps.accounting.posting import PostingError
 from apps.advances.models import CashAdvance
 from apps.core.models import Attachment
+from apps.core.attachments import attach_from_request
 from .models import Expense, ExpenseBatch, PaperReceipt
 from .forms import ExpenseForm, PaperReceiptForm
 
 
 def _save_attachments(request, model_class, object_id):
-    """Save uploaded attachments to a model instance."""
-    files = request.FILES.getlist('attachments')
-    if files:
-        content_type = ContentType.objects.get_for_model(model_class)
-        for f in files:
-            Attachment.objects.create(
-                content_type=content_type,
-                object_id=object_id,
-                file=f,
-                original_filename=f.name,
-                uploaded_by=request.user,
-            )
+    """Validate and store files posted in the form's 'attachments' input."""
+    attach_from_request(request, model_class.objects.get(pk=object_id))
+
 
 
 @login_required

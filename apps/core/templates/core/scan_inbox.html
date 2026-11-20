@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+{% load erp_extras %}
+
+{% block title %}صندوق المسح الضوئي{% endblock %}
+{% block page_title %}صندوق المسح الضوئي{% endblock %}
+
+{% block content %}
+<div class="space-y-4">
+    <div class="panel p-4 text-sm text-gray-600 leading-6">
+        الملفات هنا لم تُربط بأي مستند بعد. تصل إليه من:
+        <strong>الماسح الضوئي</strong> (مجلد المسح المشترك - يُستورد تلقائياً)،
+        أو <strong>كاميرا الهاتف</strong>، أو الرفع اليدوي.
+        اربط كل ملف بمستنده بكتابة رقمه (مثال: <span class="font-mono">BILL-000012</span> أو <span class="font-mono">INV-000003</span>).
+    </div>
+
+    <form method="post" enctype="multipart/form-data" class="upload-panel panel p-4" data-dropzone>
+        {% csrf_token %}
+        <input type="hidden" name="upload_source" value="upload" data-upload-source>
+        <div class="dropzone" data-dropzone-target>
+            <p class="font-medium text-gray-700">اسحب ملفات المسح هنا أو</p>
+            <div class="flex flex-wrap items-center justify-center gap-2 mt-2">
+                <label class="btn btn-secondary btn-sm cursor-pointer">
+                    اختيار ملفات
+                    <input type="file" name="file" multiple accept="{{ accept }}" class="sr-only" data-file-input>
+                </label>
+                <label class="btn btn-secondary btn-sm cursor-pointer">
+                    تصوير بالكاميرا
+                    <input type="file" name="file" multiple accept="image/*" capture="environment" class="sr-only" data-file-input data-camera>
+                </label>
+            </div>
+            <p class="text-xs text-gray-500 mt-2" data-file-summary>الحد الأقصى {{ max_mb }} ميجابايت لكل ملف</p>
+        </div>
+        <div class="flex flex-wrap items-end gap-3 mt-3">
+            <div class="flex-1 min-w-[12rem]">
+                <label class="block text-xs text-gray-500 mb-1">اسم ملف PDF المدمج (اختياري)</label>
+                <input type="text" name="combined_name" maxlength="150" class="form-input text-sm w-full" placeholder="مثال: عقد المورد">
+            </div>
+            <label class="flex items-center gap-2 text-sm text-gray-700 pb-2">
+                <input type="checkbox" name="combine_images" value="1" class="form-checkbox" data-combine>
+                دمج الصور في ملف PDF واحد
+            </label>
+            <button type="submit" class="btn btn-primary btn-sm">إضافة للصندوق</button>
+        </div>
+    </form>
+
+    <div class="panel">
+        {% if items %}
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th class="w-14"></th>
+                    <th>الملف</th>
+                    <th>الحجم</th>
+                    <th>المصدر</th>
+                    <th>أضيف بواسطة</th>
+                    <th>التاريخ</th>
+                    <th>{% if can_manage %}ربط بمستند{% endif %}</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in items %}
+                {% url 'core:attachment_download' item.pk as file_url %}
+                <tr>
+                    <td>
+                        {% if item.is_image %}
+                        <a href="{{ file_url }}" target="_blank"><img src="{{ file_url }}" alt="" loading="lazy" class="attachment-thumb"></a>
+                        {% else %}
+                        <span class="attachment-ext">{{ item.file_extension|slice:"1:"|upper }}</span>
+                        {% endif %}
+                    </td>
+                    <td><a href="{{ file_url }}" target="_blank" class="text-primary-600 hover:underline">{{ item.original_filename }}</a></td>
+                    <td class="whitespace-nowrap">{{ item.file_size|filesize }}</td>
+                    <td>{{ item.get_source_display }}</td>
+                    <td>{{ item.uploaded_by.get_full_name|default:"النظام" }}</td>
+                    <td class="whitespace-nowrap">{{ item.uploaded_at|date:"Y-m-d H:i" }}</td>
+                    <td>
+                        {% if can_manage %}
+                        <form method="post" action="{% url 'core:scan_inbox_assign' item.pk %}" class="flex items-center gap-2">
+                            {% csrf_token %}
+                            <input type="text" name="document_number" required placeholder="رقم المستند"
+                                   class="form-input text-sm w-36 font-mono" dir="ltr" autocomplete="off">
+                            <input type="text" name="description" placeholder="وصف" class="form-input text-sm w-32">
+                            <button type="submit" class="btn btn-secondary btn-sm">ربط</button>
+                            <button type="submit" name="next" value="document" class="text-xs text-primary-600 hover:underline" title="ربط ثم فتح المستند">ربط وفتح</button>
+                        </form>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% can_delete_attachment item as deletable %}
+                        {% if deletable %}
+                        <form method="post" action="{% url 'core:attachment_delete' item.pk %}"
+                              onsubmit="return confirm('حذف هذا الملف نهائياً؟');">
+                            {% csrf_token %}
+                            <button type="submit" class="text-red-600 hover:text-red-800 text-sm">حذف</button>
+                        </form>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div class="p-8 text-center text-gray-500">الصندوق فارغ - كل الملفات الممسوحة مرتبطة بمستنداتها</div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

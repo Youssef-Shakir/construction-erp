@@ -16,6 +16,9 @@
             <a href="{% url 'core:documents' %}" class="text-sm text-gray-500 hover:text-gray-700">إلغاء البحث</a>
             {% endif %}
         </form>
+        <a href="{% url 'core:scan_inbox' %}" class="btn btn-secondary btn-sm">
+            صندوق المسح الضوئي{% if inbox_count %} ({{ inbox_count }}){% endif %}
+        </a>
     </div>
 
     <!-- Documents table -->
@@ -35,7 +38,7 @@
                 {% for attachment in attachments %}
                 <tr>
                     <td>
-                        <a href="{{ attachment.file.url }}" target="_blank" class="text-primary-600 hover:underline flex items-center gap-2">
+                        <a href="{% url 'core:attachment_download' attachment.pk %}" target="_blank" class="text-primary-600 hover:underline flex items-center gap-2">
                             {% if attachment.is_image %}
                             <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
@@ -54,8 +57,12 @@
                     </td>
                     <td>{{ attachment.description|default:"-" }}</td>
                     <td>
-                        <span class="text-xs text-gray-500">{{ attachment.content_type.model }}</span>
-                        <span class="text-gray-400">#{{ attachment.object_id }}</span>
+                        <span class="text-xs text-gray-500">{{ attachment.doc_label }}</span>
+                        {% if attachment.doc_url %}
+                        <a href="{{ attachment.doc_url }}" class="font-mono text-primary-600 hover:underline">{{ attachment.doc_number }}</a>
+                        {% else %}
+                        <span class="font-mono text-gray-600">{{ attachment.doc_number }}</span>
+                        {% endif %}
                     </td>
                     <td>{{ attachment.uploaded_by.get_full_name|default:attachment.uploaded_by.email|default:"-" }}</td>
                     <td class="whitespace-nowrap">{{ attachment.uploaded_at|date:"Y-m-d H:i" }}</td>

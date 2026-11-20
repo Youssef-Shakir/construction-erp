@@ -27,8 +27,8 @@ class PartnerAdmin(SimpleHistoryAdmin):
 
 
 @admin.register(Attachment)
-class AttachmentAdmin(admin.ModelAdmin):
-    list_display = ('original_filename', 'content_type', 'object_id', 'uploaded_by', 'uploaded_at')
-    list_filter = ('content_type', 'uploaded_at')
+class AttachmentAdmin(SimpleHistoryAdmin):
+    list_display = ('original_filename', 'content_type', 'object_id', 'source', 'file_size', 'uploaded_by', 'uploaded_at')
+    list_filter = ('content_type', 'source', 'uploaded_at')
     search_fields = ('original_filename', 'description')
     date_hierarchy = 'uploaded_at'

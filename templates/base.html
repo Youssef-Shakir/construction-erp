@@ -9,7 +9,7 @@
     <link rel="stylesheet" href="{% static 'css/output.css' %}?v=20260906b">
     {% block extra_css %}{% endblock %}
 </head>
-<body class="bg-gray-50 text-gray-900 text-sm">
+<body class="bg-gray-50 text-gray-900 text-sm" hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
     {% if user.is_authenticated %}
     <!-- Sidebar -->
     {% include "partials/sidebar.html" %}
@@ -53,8 +53,9 @@
     </main>
     {% endif %}
 
-    <!-- HTMX -->
-    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+    <!-- HTMX (vendored: works on an offline/intranet server) -->
+    <script src="{% static 'js/htmx.min.js' %}"></script>
+    <script src="{% static 'js/uploads.js' %}"></script>
 
     <!-- Keyboard shortcuts + mobile UI -->
     <script>

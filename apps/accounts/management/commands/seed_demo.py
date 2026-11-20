@@ -75,17 +75,20 @@ class Command(BaseCommand):
         from apps.accounting.models import AccountType
 
         types = [
-            ('asset', 'الأصول', 'Assets', 1),
-            ('liability', 'الخصوم', 'Liabilities', 2),
-            ('equity', 'حقوق الملكية', 'Equity', 3),
-            ('revenue', 'الإيرادات', 'Revenue', 4),
-            ('expense', 'المصروفات', 'Expenses', 5),
+            ('asset', 'الأصول', 'Assets', 'debit', 'balance_sheet', 1),
+            ('liability', 'الخصوم', 'Liabilities', 'credit', 'balance_sheet', 2),
+            ('equity', 'حقوق الملكية', 'Equity', 'credit', 'balance_sheet', 3),
+            ('revenue', 'الإيرادات', 'Revenue', 'credit', 'income_statement', 4),
+            ('expense', 'المصروفات', 'Expenses', 'debit', 'income_statement', 5),
         ]
 
-        for code, name, name_en, order in types:
-            AccountType.objects.get_or_create(
+        for code, name, name_en, normal_balance, report_section, order in types:
+            AccountType.objects.update_or_create(
                 code=code,
-                defaults={'name': name, 'name_en': name_en, 'order': order}
+                defaults={
+                    'name': name, 'name_en': name_en, 'order': order,
+                    'normal_balance': normal_balance, 'report_section': report_section,
+                },
             )
 
     def create_accounts(self):

@@ -374,3 +374,27 @@
     justify-content: center;
   }
 }
+
+/* ---------------------------------------------------------------------
+ * Attachments / scanner upload
+ * ------------------------------------------------------------------- */
+@layer components {
+  .dropzone {
+    @apply border border-dashed border-gray-300 rounded bg-gray-50 px-4 py-5 text-center text-sm;
+  }
+  .dropzone.is-dragover {
+    @apply border-primary-500 bg-primary-50;
+  }
+  .attachment-thumb {
+    @apply w-10 h-10 object-cover border border-gray-200 rounded bg-white;
+  }
+  .attachment-ext {
+    @apply inline-flex items-center justify-center w-10 h-10 border border-gray-200 rounded bg-gray-50 text-[10px] font-semibold text-gray-500;
+  }
+}
+
+/* Outside @layer: built dynamically (notice-{{ level }}) so must not be purged */
+.notice { @apply px-3 py-2 text-sm border rounded; }
+.notice-success { @apply bg-green-50 border-green-200 text-green-800; }
+.notice-warning { @apply bg-yellow-50 border-yellow-200 text-yellow-800; }
+.notice-error { @apply bg-red-50 border-red-200 text-red-800; }

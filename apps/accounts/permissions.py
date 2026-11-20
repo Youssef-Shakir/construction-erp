@@ -83,6 +83,36 @@ def can_upload_attachments(user):
     return user.is_authenticated
 
 
+def can_view_attachment(user, attachment):
+    """
+    Any active staff role may view document attachments (all roles can open
+    the documents themselves). Unauthenticated users never can.
+    """
+    return user.is_authenticated and user.is_active
+
+
+def can_delete_attachment(user, attachment):
+    """
+    - Business manager: always.
+    - Attachments of posted/cancelled documents are evidence: manager only.
+    - Otherwise the uploader, or anyone who can post documents.
+    """
+    if not user.is_authenticated:
+        return False
+    if is_business_manager(user):
+        return True
+    from apps.core.attachments import document_is_locked
+    doc = attachment.content_object
+    if doc is not None and document_is_locked(doc):
+        return False
+    return attachment.uploaded_by_id == user.pk or can_post_document(user)
+
+
+def can_manage_scan_inbox(user):
+    """Assign/delete scan-inbox items: accountants and managers."""
+    return can_post_document(user)
+
+
 # Decorators for views
 
 def business_manager_required(view_func):

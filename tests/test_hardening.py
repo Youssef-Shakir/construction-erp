@@ -11,6 +11,7 @@ Each test pins down a bug that existed before the review:
 - document numbers came from last.id + 1 (collisions under concurrency)
 - reversing a document's entry from the journal screen left the document 'posted'
 """
+import os
 from datetime import date
 from decimal import Decimal
 
@@ -265,3 +266,14 @@ class TestNumberingAndReversal:
         client.post(url)
         posted_invoice.journal_entry.refresh_from_db()
         assert not posted_invoice.journal_entry.is_reversed
+
+
+@pytest.mark.django_db
+def test_seed_demo_sets_normal_balances():
+    """seed_demo used to leave normal_balance blank, flipping asset/expense signs."""
+    from django.core.management import call_command
+    from apps.accounting.models import AccountType
+    call_command('seed_demo', stdout=open(os.devnull, 'w'))
+    normal = dict(AccountType.objects.values_list('code', 'normal_balance'))
+    assert normal['asset'] == 'debit' and normal['expense'] == 'debit'
+    assert normal['liability'] == normal['equity'] == normal['revenue'] == 'credit'

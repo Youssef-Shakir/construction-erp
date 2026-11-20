@@ -147,28 +147,40 @@ class Partner(AuditMixin, models.Model):
 
 
 def attachment_path(instance, filename):
-    """Generate upload path for attachments: media/<app>/<model>/<id>/<filename>"""
-    content_type = instance.content_type
-    return os.path.join(
-        content_type.app_label,
-        content_type.model,
-        str(instance.object_id),
-        filename
-    )
+    """
+    Fallback upload path (core.attachments.store_attachments normally sets the
+    name itself): <app>/<model>/<id>/<uuid>.<ext>, or inbox/ when unassigned.
+    """
+    from .attachments import storage_path
+    return storage_path(instance.content_type, instance.object_id, os.path.splitext(filename)[1].lower())
 
 
 class Attachment(models.Model):
     """
-    Generic attachment model that can be linked to any document.
-    Uses GenericForeignKey to support Invoice, Bill, Expense, etc.
+    File attached to a business document through a GenericForeignKey.
+
+    content_type/object_id are NULL while the file sits in the scan inbox
+    (uploaded or imported from a scanner folder, not yet linked to a document).
+    Files are served only through core:attachment_download (login + permission).
     """
-    content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
-    object_id = models.PositiveIntegerField()
+    SOURCE_CHOICES = [
+        ('upload', 'رفع ملف'),
+        ('camera', 'كاميرا'),
+        ('scanner', 'ماسح ضوئي'),
+    ]
+
+    content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE, null=True, blank=True)
+    object_id = models.PositiveIntegerField(null=True, blank=True)
     content_object = GenericForeignKey('content_type', 'object_id')
 
-    file = models.FileField('الملف', upload_to=attachment_path)
+    file = models.FileField('الملف', upload_to=attachment_path, max_length=255)
     original_filename = models.CharField('اسم الملف الأصلي', max_length=255)
     description = models.CharField('الوصف', max_length=255, blank=True)
+    mime_type = models.CharField('نوع المحتوى', max_length=120, blank=True)
+    file_size = models.PositiveBigIntegerField('الحجم', default=0)
+    sha256 = models.CharField('البصمة', max_length=64, blank=True, db_index=True)
+    source = models.CharField('المصدر', max_length=20, choices=SOURCE_CHOICES, default='upload')
+
     uploaded_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.SET_NULL,
@@ -176,11 +188,23 @@ class Attachment(models.Model):
         verbose_name='رُفع بواسطة',
     )
     uploaded_at = models.DateTimeField('تاريخ الرفع', auto_now_add=True)
+    assigned_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='assigned_attachments',
+        verbose_name='رُبط بواسطة',
+    )
+    assigned_at = models.DateTimeField('تاريخ الربط', null=True, blank=True)
+
+    history = HistoricalRecords()
 
     class Meta:
         verbose_name = 'مرفق'
         verbose_name_plural = 'المرفقات'
         ordering = ['-uploaded_at']
+        indexes = [models.Index(fields=['content_type', 'object_id'])]
 
     def __str__(self):
         return self.original_filename
@@ -189,6 +213,10 @@ class Attachment(models.Model):
         if not self.original_filename and self.file:
             self.original_filename = os.path.basename(self.file.name)
         super().save(*args, **kwargs)
+
+    @property
+    def in_inbox(self):
+        return self.content_type_id is None
 
     @property
     def file_extension(self):
@@ -205,3 +233,7 @@ class Attachment(models.Model):
     def is_pdf(self):
         """Check if attachment is a PDF."""
         return self.file_extension == '.pdf'
+
+    @property
+    def can_display_inline(self):
+        return self.is_image or self.is_pdf

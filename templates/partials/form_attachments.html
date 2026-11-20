@@ -1,0 +1,23 @@
+{% load erp_extras %}{% attachment_accept as accept %}
+{# Attachment inputs for document create/edit forms (form must be multipart). #}
+<div class="upload-panel" data-dropzone>
+    <input type="hidden" name="upload_source" value="upload" data-upload-source>
+    <div class="dropzone" data-dropzone-target>
+        <p class="font-medium text-gray-700">اسحب الملفات هنا أو</p>
+        <div class="flex flex-wrap items-center justify-center gap-2 mt-2">
+            <label class="btn btn-secondary btn-sm cursor-pointer">
+                اختيار ملفات
+                <input type="file" name="attachments" multiple accept="{{ accept }}" class="sr-only" data-file-input>
+            </label>
+            <label class="btn btn-secondary btn-sm cursor-pointer">
+                تصوير بالكاميرا
+                <input type="file" name="attachments" multiple accept="image/*" capture="environment" class="sr-only" data-file-input data-camera>
+            </label>
+        </div>
+        <p class="text-xs text-gray-500 mt-2" data-file-summary>PDF، صور، TIFF من الماسح الضوئي، Excel، Word</p>
+    </div>
+    <label class="flex items-center gap-2 text-sm text-gray-700 mt-2">
+        <input type="checkbox" name="combine_images" value="1" class="form-checkbox" data-combine>
+        دمج الصور في ملف PDF واحد
+    </label>
+</div>

@@ -1,31 +1,77 @@
-{% load static %}
+{% load erp_extras %}
 {#
-Attachment tab - include in document detail tabs
+Attachment tab - include in document detail tabs.
 Required context: content_type_id, object_id, attachments
+
+Three ways to add files:
+  1. choose / drag & drop files (scanner output PDFs, photos, Excel...)
+  2. "Camera" - on phones/tablets opens the camera directly; several photos
+     can be merged into ONE PDF (multi-page receipts, contracts)
+  3. "From scan inbox" - files the office scanner dropped into the scan
+     folder (imported by `manage.py import_scans`) or uploaded to the inbox
 #}
+{% attachment_accept as accept %}
+{% can_manage_inbox as manage_inbox %}
 <div class="space-y-4">
-    <!-- Upload form -->
     <form hx-post="{% url 'core:attachment_upload' %}"
           hx-target="#attachments-list"
           hx-encoding="multipart/form-data"
-          class="flex items-end gap-4 p-4 bg-gray-50 rounded">
-        {% csrf_token %}
+          hx-on::after-request="if (event.detail.successful) this.reset()"
+          class="upload-panel" data-dropzone>
         <input type="hidden" name="content_type_id" value="{{ content_type_id }}">
         <input type="hidden" name="object_id" value="{{ object_id }}">
-        <div class="flex-1">
-            <label class="block text-xs text-gray-500 mb-1">اختر ملف</label>
-            <input type="file" name="file" required class="form-input text-sm w-full">
+        <input type="hidden" name="upload_source" value="upload" data-upload-source>
+
+        <div class="dropzone" data-dropzone-target>
+            <p class="font-medium text-gray-700">اسحب الملفات هنا أو</p>
+            <div class="flex flex-wrap items-center justify-center gap-2 mt-2">
+                <label class="btn btn-secondary btn-sm cursor-pointer">
+                    اختيار ملفات
+                    <input type="file" name="file" multiple accept="{{ accept }}" class="sr-only" data-file-input>
+                </label>
+                <label class="btn btn-secondary btn-sm cursor-pointer">
+                    تصوير بالكاميرا
+                    <input type="file" name="file" multiple accept="image/*" capture="environment" class="sr-only" data-file-input data-camera>
+                </label>
+            </div>
+            <p class="text-xs text-gray-500 mt-2" data-file-summary>PDF، صور، TIFF من الماسح الضوئي، Excel، Word</p>
         </div>
-        <div class="flex-1">
-            <label class="block text-xs text-gray-500 mb-1">الوصف (اختياري)</label>
-            <input type="text" name="description" class="form-input text-sm w-full" placeholder="وصف المرفق">
+
+        <div class="flex flex-wrap items-end gap-3 mt-3">
+            <div class="flex-1 min-w-[12rem]">
+                <label class="block text-xs text-gray-500 mb-1">الوصف (اختياري)</label>
+                <input type="text" name="description" maxlength="255" class="form-input text-sm w-full" placeholder="مثال: فاتورة المورد الأصلية">
+            </div>
+            <label class="flex items-center gap-2 text-sm text-gray-700 pb-2">
+                <input type="checkbox" name="combine_images" value="1" class="form-checkbox" data-combine>
+                دمج الصور في ملف PDF واحد
+            </label>
+            <button type="submit" class="btn btn-primary btn-sm">رفع</button>
         </div>
-        <button type="submit" class="btn btn-primary btn-sm">
-            رفع
-        </button>
     </form>
 
-    <!-- Attachments list -->
+    {% if manage_inbox %}
+    {% scan_inbox_items as inbox %}
+    {% if inbox %}
+    <form hx-post="{% url 'core:attachment_from_inbox' %}" hx-target="#attachments-list"
+          class="flex flex-wrap items-end gap-3 p-3 border border-gray-200 rounded bg-white">
+        <input type="hidden" name="content_type_id" value="{{ content_type_id }}">
+        <input type="hidden" name="object_id" value="{{ object_id }}">
+        <div class="flex-1 min-w-[14rem]">
+            <label class="block text-xs text-gray-500 mb-1">من صندوق المسح الضوئي ({{ inbox|length }})</label>
+            <select name="attachment_id" class="form-select text-sm w-full" required>
+                <option value="">اختر ملفاً ممسوحاً...</option>
+                {% for item in inbox %}
+                <option value="{{ item.pk }}">{{ item.original_filename }} — {{ item.uploaded_at|date:"Y-m-d H:i" }} ({{ item.file_size|filesize }})</option>
+                {% endfor %}
+            </select>
+        </div>
+        <button type="submit" class="btn btn-secondary btn-sm">ربط بالمستند</button>
+        <a href="{% url 'core:scan_inbox' %}" target="_blank" class="text-sm text-primary-600 hover:underline pb-2">معاينة الصندوق</a>
+    </form>
+    {% endif %}
+    {% endif %}
+
     <div id="attachments-list">
         {% include "partials/attachment_list.html" %}
     </div>

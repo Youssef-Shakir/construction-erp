@@ -5,7 +5,11 @@
 #   docker compose --profile test run --rm test       # test suite on Postgres + MinIO
 #   docker compose --profile scanner up -d scans      # scanner folder importer
 #
-# Production (HTTPS via Caddy): see docker-compose.prod.yml and docs/DEPLOYMENT.md
+# Production: add an overlay through COMPOSE_FILE in .env
+#   docker-compose.prod.yml   - own server, HTTPS via Caddy
+#   docker-compose.tunnel.yml - behind an existing Cloudflare Tunnel
+
+name: construction-erp   # stable container/volume names whatever the folder is called
 
 x-app: &app
   build:
@@ -83,7 +87,7 @@ services:
     entrypoint: ["/bin/sh", "/minio-init.sh"]
     restart: "no"
 
-  web:
+  erp:   # unique name: shared tunnel networks often already have a 'web'
     <<: *app
     environment:
       <<: *app-env
@@ -109,7 +113,7 @@ services:
     healthcheck:
       disable: true
     depends_on:
-      web:
+      erp:
         condition: service_healthy
 
   test:

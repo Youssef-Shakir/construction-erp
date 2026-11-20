@@ -5,7 +5,7 @@ setup without Docker (gunicorn + nginx directly on the server).
 
 ## 0. Docker (recommended)
 
-Stack: `web` (gunicorn, non-root, read-only filesystem) · `db` (PostgreSQL 16) ·
+Stack: `erp` (gunicorn, non-root, read-only filesystem) · `db` (PostgreSQL 16) ·
 `minio` (S3 storage for attachments, private bucket) · `minio-init` (creates the
 bucket and a restricted app user) · optional `scans` (scanner folder importer) ·
 `caddy` (HTTPS, production overlay only).
@@ -13,10 +13,10 @@ bucket and a restricted app user) · optional `scans` (scanner folder importer) 
 ```bash
 cp .env.docker.example .env        # change every "change-me" (openssl rand -base64 36)
 docker compose up -d --build       # http://localhost:8080  (WEB_PORT in .env)
-docker compose logs -f web
+docker compose logs -f erp
 ```
 
-On first start `web` applies migrations and creates the admin from
+On first start `erp` applies migrations and creates the admin from
 `DJANGO_SUPERUSER_EMAIL` / `DJANGO_SUPERUSER_PASSWORD`.
 
 **Production server (HTTPS):** point the DNS of `DOMAIN` to the server, open ports 80/443, then
@@ -33,11 +33,20 @@ MinIO console is on `127.0.0.1:9001` (use an SSH tunnel from outside).
 |---|---|
 | Run the full test suite on Postgres + MinIO | `docker compose --profile test run --rm test` (local/staging stack only: it writes `test-runs/` objects to the bucket) |
 | Scanner folder importer | set `SCAN_HOST_DIR`, `chown 1001 <dir>`, `docker compose --profile scanner up -d scans` |
-| Compress files uploaded before the compressor existed | `docker compose exec web python manage.py compress_attachments --dry-run` |
-| Django shell | `docker compose exec web python manage.py shell` |
+| Compress files uploaded before the compressor existed | `docker compose exec erp python manage.py compress_attachments --dry-run` |
+| Django shell | `docker compose exec erp python manage.py shell` |
 | Backup DB | `docker compose exec -T db pg_dump -U $DB_USER -Fc $DB_NAME > erp-$(date +%F).dump` |
 | Backup files | `docker compose run --rm --entrypoint sh minio-init -c 'mc alias set l http://minio:9000 $MINIO_ROOT_USER $MINIO_ROOT_PASSWORD && mc mirror l/$AWS_STORAGE_BUCKET_NAME /backup'` (mount a `/backup` volume) |
 | Update | `git pull && docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build` |
+
+**Behind a Cloudflare Tunnel** (no open ports, HTTPS by Cloudflare): in `.env` set
+`COMPOSE_FILE=docker-compose.yml:docker-compose.tunnel.yml` and `TUNNEL_NETWORK` to the
+Docker network the `cloudflared` container is on. In Cloudflare Zero Trust -> Networks ->
+Tunnels -> your tunnel -> Public hostnames, route the domain to `http://codia-erp:8000`.
+
+**First deployment on a VPS:** `scripts/vps-setup-deploy-key.sh` (run as the app user)
+creates a read-only GitHub deploy key and clones the repo; afterwards every update is
+`scripts/update.sh` (backup -> pull -> rebuild -> health check -> automatic rollback).
 
 **MinIO image:** MinIO stopped publishing community Docker images in 2025, so the
 stack uses `pgsty/minio` (a maintained build of the same server). To use another

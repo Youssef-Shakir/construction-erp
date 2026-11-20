@@ -6,7 +6,8 @@
 #   scripts/update.sh --force    # rebuild even if there are no new commits
 #
 # Safe to run from cron. Uses a lock so two updates never overlap.
-# Database migrations run automatically when the new web container starts
+# Compose files come from COMPOSE_FILE in .env (e.g. docker-compose.yml:docker-compose.tunnel.yml).
+# Database migrations run automatically when the new erp container starts
 # (RUN_MIGRATIONS=1). If the new version fails its health check, the CODE is
 # rolled back automatically; a migration is NOT reversed - restore the backup
 # printed below if needed:
@@ -26,7 +27,7 @@ mkdir -p backups logs
 LOG="logs/update-$(date +%Y%m%d-%H%M%S).log"
 exec > >(tee -a "$LOG") 2>&1
 
-COMPOSE=(docker compose -f docker-compose.yml -f docker-compose.prod.yml)
+COMPOSE=(docker compose)   # reads COMPOSE_FILE from .env
 log() { echo "[$(date '+%F %T')] $*"; }
 
 # One update at a time
@@ -66,7 +67,7 @@ fi
 wait_healthy() {
     local cid status waited=0
     while [ "$waited" -lt "$HEALTH_TIMEOUT" ]; do
-        cid="$("${COMPOSE[@]}" ps -q web)"
+        cid="$("${COMPOSE[@]}" ps -q erp)"
         status="$(docker inspect -f '{{.State.Health.Status}}' "$cid" 2>/dev/null || echo starting)"
         [ "$status" = healthy ] && return 0
         [ "$status" = unhealthy ] && return 1
@@ -76,7 +77,7 @@ wait_healthy() {
 }
 
 deploy() {
-    "${COMPOSE[@]}" build --pull web
+    "${COMPOSE[@]}" build --pull erp
     "${COMPOSE[@]}" up -d --remove-orphans
 }
 
@@ -91,11 +92,11 @@ if deploy && wait_healthy; then
 fi
 
 # 3. Rollback
-log "ERROR: new version is not healthy. Last web logs:"
-"${COMPOSE[@]}" logs --tail 60 web || true
+log "ERROR: new version is not healthy. Last app logs:"
+"${COMPOSE[@]}" logs --tail 60 erp || true
 log "Rolling back code to ${OLD_SHA:0:7}"
 git checkout --quiet --detach "$OLD_SHA"
 deploy && wait_healthy && log "Rollback OK (database backup: ${BACKUP:-none})" \
-    || log "ROLLBACK FAILED - check: ${COMPOSE[*]} logs web"
+    || log "ROLLBACK FAILED - check: ${COMPOSE[*]} logs erp"
 git checkout --quiet -B "$BRANCH" "$OLD_SHA"
 exit 1

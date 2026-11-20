@@ -1,10 +1,10 @@
-# Production overlay: HTTPS with automatic certificates (Caddy) in front of web.
+# Production overlay: HTTPS with automatic certificates (Caddy) in front of the app.
 #
 #   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
 #
 # Needs DOMAIN in .env and ports 80/443 open to the server.
 services:
-  web:
+  erp:
     ports: !reset []                 # only Caddy is exposed
     environment:
       SECURE_SSL_REDIRECT: "True"
@@ -22,7 +22,7 @@ services:
   caddy:
     image: caddy:2.10-alpine
     depends_on:
-      web:
+      erp:
         condition: service_healthy
     environment:
       DOMAIN: ${DOMAIN}

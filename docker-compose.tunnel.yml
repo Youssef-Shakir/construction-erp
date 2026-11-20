@@ -1,0 +1,52 @@
+# Overlay for a server that already runs a Cloudflare Tunnel (cloudflared) in Docker.
+#
+# In .env:
+#   COMPOSE_FILE=docker-compose.yml:docker-compose.tunnel.yml
+#   TUNNEL_NETWORK=<docker network the cloudflared container is on>
+#
+# Cloudflare Zero Trust -> Networks -> Tunnels -> <tunnel> -> Public hostnames:
+#   codia.donialink.com  ->  HTTP  ->  codia-erp:8000
+#
+# Only the app container joins the tunnel network (under the unique alias
+# "codia-erp"); PostgreSQL and MinIO stay on the private project network.
+# No host ports are opened: HTTPS terminates at Cloudflare.
+services:
+  erp:
+    ports: !reset []
+    environment:
+      # Cloudflare enforces HTTPS at the edge (enable "Always Use HTTPS"); the
+      # tunnel talks plain HTTP to the container, so no redirect here.
+      SECURE_SSL_REDIRECT: "False"
+      SECURE_COOKIES: "True"
+    networks:
+      default:
+      tunnel:
+        aliases: [codia-erp]
+    deploy:
+      resources:
+        limits:
+          memory: 768m
+
+  scans:
+    environment:
+      SECURE_COOKIES: "True"
+
+  db:
+    deploy:
+      resources:
+        limits:
+          memory: 384m
+
+  minio:
+    ports: !reset []                 # console: ssh tunnel to the container if needed
+    environment:
+      MINIO_BROWSER: "off"
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+
+networks:
+  tunnel:
+    external: true
+    name: ${TUNNEL_NETWORK:-ilumina}

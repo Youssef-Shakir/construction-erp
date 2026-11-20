@@ -6,8 +6,16 @@ from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
 
+from apps.core import pwa
+
 urlpatterns = [
     path('admin/', admin.site.urls),
+
+    # PWA (service worker must live at the root to control the whole site)
+    path('manifest.webmanifest', pwa.manifest, name='pwa_manifest'),
+    path('sw.js', pwa.service_worker, name='pwa_sw'),
+    path('offline/', pwa.offline, name='pwa_offline'),
+    path('share/', pwa.share_target, name='pwa_share'),
 
     # App URLs
     path('', include('apps.dashboard.urls', namespace='dashboard')),

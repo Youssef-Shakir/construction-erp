@@ -69,3 +69,23 @@ def can_delete_attachment(context, attachment):
     from apps.accounts.permissions import can_delete_attachment as check
     request = context.get('request')
     return bool(request) and check(request.user, attachment)
+
+
+@register.filter(name='index')
+def index(sequence, i):
+    """sequence|index:n -> sequence[n] (None when out of range)."""
+    try:
+        return sequence[int(i)]
+    except (IndexError, TypeError, ValueError, KeyError):
+        return None
+
+
+@register.filter(name='amount')
+def amount(value):
+    """Money with exactly two decimals and thousand separators: 1,234.50"""
+    if value is None or value == '':
+        return '0.00'
+    try:
+        return thousands(Decimal(str(value)).quantize(Decimal('0.01')))
+    except (InvalidOperation, TypeError, ValueError):
+        return value

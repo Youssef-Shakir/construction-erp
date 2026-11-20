@@ -215,3 +215,4 @@ if DEBUG and importlib.util.find_spec('debug_toolbar') and config('DEBUG_TOOLBAR
     INSTALLED_APPS += ['debug_toolbar']
     MIDDLEWARE.insert(0, 'debug_toolbar.middleware.DebugToolbarMiddleware')
     INTERNAL_IPS = ['127.0.0.1']
+SESSION_COOKIE_SAMESITE = 'Lax'  # relied on by the PWA share target (csrf_exempt)

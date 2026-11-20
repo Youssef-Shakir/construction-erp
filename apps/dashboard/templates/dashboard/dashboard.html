@@ -1,292 +1,215 @@
 {% extends "base.html" %}
+{% load erp_extras %}
 
 {% block title %}لوحة القيادة{% endblock %}
 {% block page_title %}لوحة القيادة{% endblock %}
 
 {% block content %}
-<!-- Quick Actions -->
-<div class="mb-6">
-    <div class="flex items-center justify-between mb-4">
-        <h2 class="text-lg font-semibold">إجراءات سريعة</h2>
-    </div>
-    <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
-        <a href="{% url 'invoicing:create' %}" class="quick-action">
-            <div class="quick-action-icon bg-green-50 text-green-600">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/></svg>
-            </div>
-            <span>فاتورة جديدة</span>
-        </a>
-        <a href="{% url 'bills:create' %}" class="quick-action">
-            <div class="quick-action-icon bg-orange-50 text-orange-600">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/></svg>
-            </div>
-            <span>فاتورة مورد</span>
-        </a>
-        <a href="{% url 'payments:receive' %}" class="quick-action">
-            <div class="quick-action-icon bg-blue-50 text-blue-600">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8l-8 8-8-8"/></svg>
-            </div>
-            <span>استلام دفعة</span>
-        </a>
-        <a href="{% url 'payments:pay' %}" class="quick-action">
-            <div class="quick-action-icon bg-red-50 text-red-600">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 20V4m-8 8l8-8 8 8"/></svg>
-            </div>
-            <span>صرف دفعة</span>
-        </a>
-        <a href="{% url 'advances:create' %}" class="quick-action">
-            <div class="quick-action-icon bg-purple-50 text-purple-600">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2z"/></svg>
-            </div>
-            <span>سلفة جديدة</span>
-        </a>
-        <a href="{% url 'expenses:create' %}" class="quick-action">
-            <div class="quick-action-icon bg-yellow-50 text-yellow-600">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 14l6-6m-5.5.5h.01m4.99 5h.01"/></svg>
-            </div>
-            <span>مصروف جديد</span>
-        </a>
-    </div>
-</div>
+<div class="dash">
 
-<!-- Summary Cards -->
-<div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-    <div class="stat-card">
-        <div class="stat-card-icon bg-primary-50 text-primary-600">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5"/></svg>
-        </div>
-        <div class="stat-card-value text-primary-600">{{ active_projects }}</div>
-        <div class="stat-card-label">المشاريع النشطة</div>
+    {# ---------------- Toolbar: quick actions ---------------- #}
+    <div class="dash-toolbar">
+        <a href="{% url 'invoicing:create' %}" class="btn btn-secondary btn-sm">+ فاتورة عميل</a>
+        <a href="{% url 'bills:create' %}" class="btn btn-secondary btn-sm">+ فاتورة مورد</a>
+        <a href="{% url 'payments:receive' %}" class="btn btn-secondary btn-sm">↓ استلام دفعة</a>
+        <a href="{% url 'payments:pay' %}" class="btn btn-secondary btn-sm">↑ صرف دفعة</a>
+        <a href="{% url 'advances:create' %}" class="btn btn-secondary btn-sm">+ سلفة</a>
+        <a href="{% url 'expenses:create' %}" class="btn btn-secondary btn-sm">+ مصروف</a>
+        <a href="{% url 'core:scan_inbox' %}" class="btn btn-secondary btn-sm">⎙ مسح مستند</a>
+        <span class="dash-date">{{ today|date:"l j F Y" }}</span>
     </div>
-    <div class="stat-card">
-        <div class="stat-card-icon bg-blue-50 text-blue-600">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1"/></svg>
-        </div>
-        <div class="stat-card-value text-blue-600 money">{{ total_receivables }}</div>
-        <div class="stat-card-label">المستحقات</div>
-        {% if overdue_receivables > 0 %}
-        <div class="text-xs text-red-600 mt-1">متأخر: <span class="money">{{ overdue_receivables }}</span></div>
+
+    {% if show_financials %}
+    {# ---------------- KPI strip ---------------- #}
+    <div class="kpi-strip">
+        <a href="{% url 'accounting:ledger' %}" class="kpi">
+            <span class="kpi-label">النقدية والبنوك</span>
+            <span class="kpi-value money {% if cash.total < 0 %}text-red-700{% endif %}">{{ cash.total|amount }}</span>
+            <span class="kpi-sub">
+                {% for acc in cash.accounts %}{{ acc.name }} <span class="money">{{ acc.net|amount }}</span>{% if not forloop.last %} · {% endif %}{% empty %}لا توجد حسابات{% endfor %}
+            </span>
+        </a>
+        <a href="{% url 'accounting:receivables' %}" class="kpi">
+            <span class="kpi-label">مستحق من العملاء</span>
+            <span class="kpi-value money">{{ receivables.total|amount }}</span>
+            <span class="kpi-sub">{% if receivables.overdue %}<span class="text-red-700">متأخر <span class="money">{{ receivables.overdue|amount }}</span></span>{% else %}{{ receivables.count }} فاتورة · لا متأخرات{% endif %}</span>
+        </a>
+        <a href="{% url 'accounting:payables' %}" class="kpi">
+            <span class="kpi-label">مستحق للموردين</span>
+            <span class="kpi-value money">{{ payables.total|amount }}</span>
+            <span class="kpi-sub">{% if payables.overdue %}<span class="text-red-700">متأخر <span class="money">{{ payables.overdue|amount }}</span></span>{% else %}{{ payables.count }} فاتورة · لا متأخرات{% endif %}</span>
+        </a>
+        <a href="{% url 'advances:list' %}?status=posted" class="kpi">
+            <span class="kpi-label">سلف غير مسوّاة</span>
+            <span class="kpi-value money">{{ advances.total|amount }}</span>
+            <span class="kpi-sub">{{ advances.count }} سلفة مفتوحة</span>
+        </a>
+        <a href="{% url 'accounting:income_statement' %}" class="kpi">
+            <span class="kpi-label">إيرادات الشهر</span>
+            <span class="kpi-value money">{{ month.current.revenue|amount }}</span>
+            <span class="kpi-sub">الشهر السابق لنفس الفترة <span class="money">{{ month.previous.revenue|amount }}</span></span>
+        </a>
+        <a href="{% url 'accounting:income_statement' %}" class="kpi">
+            <span class="kpi-label">صافي الشهر</span>
+            <span class="kpi-value money {% if month.current.net < 0 %}text-red-700{% else %}text-green-700{% endif %}">{{ month.current.net|amount }}</span>
+            <span class="kpi-sub">تكاليف <span class="money">{{ month.current.costs|amount }}</span></span>
+        </a>
+    </div>
+    {% endif %}
+
+    <div class="dash-grid">
+        {# ---------------- Needs attention ---------------- #}
+        <section class="panel">
+            <header class="dash-head">
+                <h2>بحاجة إلى إجراء</h2>
+                <span class="dash-count">{{ attention|length }}</span>
+            </header>
+            {% if attention %}
+            <table class="dash-table">
+                <tbody>
+                    {% for item in attention %}
+                    <tr>
+                        <td><span class="dot dot-{{ item.level }}"></span><a href="{{ item.url }}" class="hover:underline">{{ item.label }}</a></td>
+                        <td class="num w-12">{{ item.count }}</td>
+                        <td class="num w-32">{% if item.amount %}<span class="money">{{ item.amount|amount }}</span>{% endif %}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <p class="dash-empty">لا يوجد ما يحتاج إجراء الآن ✓</p>
+            {% endif %}
+        </section>
+
+        {% if show_financials %}
+        {# ---------------- Aging ---------------- #}
+        <section class="panel">
+            <header class="dash-head"><h2>أعمار الذمم</h2></header>
+            <table class="dash-table">
+                <thead>
+                    <tr><th>الفترة</th><th class="num">العملاء</th><th class="num">الموردين</th></tr>
+                </thead>
+                <tbody>
+                    {% for b in receivables.buckets %}
+                    {% with p=payables.buckets|index:forloop.counter0 %}
+                    <tr {% if b.key != 'current' and b.amount or b.key != 'current' and p.amount %}class="is-late"{% endif %}>
+                        <td>{{ b.label }}</td>
+                        <td class="num">
+                            <span class="money">{{ b.amount|amount }}</span>
+                            <span class="bar"><span class="bar-fill {% if b.key != 'current' %}bar-late{% endif %}" style="width: {{ b.pct }}%"></span></span>
+                        </td>
+                        <td class="num">
+                            <span class="money">{{ p.amount|amount }}</span>
+                            <span class="bar"><span class="bar-fill {% if p.key != 'current' %}bar-late{% endif %}" style="width: {{ p.pct }}%"></span></span>
+                        </td>
+                    </tr>
+                    {% endwith %}
+                    {% endfor %}
+                </tbody>
+                <tfoot>
+                    <tr><td>الإجمالي</td><td class="num money">{{ receivables.total|amount }}</td><td class="num money">{{ payables.total|amount }}</td></tr>
+                </tfoot>
+            </table>
+        </section>
         {% endif %}
     </div>
-    <div class="stat-card">
-        <div class="stat-card-icon bg-orange-50 text-orange-600">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2z"/></svg>
-        </div>
-        <div class="stat-card-value text-orange-600 money">{{ total_payables }}</div>
-        <div class="stat-card-label">المطلوبات</div>
-        {% if overdue_payables > 0 %}
-        <div class="text-xs text-red-600 mt-1">متأخر: <span class="money">{{ overdue_payables }}</span></div>
-        {% endif %}
-    </div>
-    <div class="stat-card">
-        <div class="stat-card-icon bg-purple-50 text-purple-600">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
-        </div>
-        <div class="stat-card-value text-purple-600 money">{{ total_open_advances }}</div>
-        <div class="stat-card-label">السلف المفتوحة</div>
-    </div>
-</div>
 
-<!-- Monthly Summary -->
-<div class="panel mb-6">
-    <div class="widget-header">
-        <h3 class="widget-title">ملخص الشهر الحالي</h3>
-    </div>
-    <div class="grid grid-cols-3 divide-x divide-x-reverse">
-        <div class="p-4 text-center">
-            <div class="stat-card-value text-green-600 money">{{ monthly_revenue }}</div>
-            <div class="stat-card-label">الإيرادات</div>
-        </div>
-        <div class="p-4 text-center">
-            <div class="stat-card-value text-red-600 money">{{ monthly_expenses }}</div>
-            <div class="stat-card-label">المصروفات</div>
-        </div>
-        <div class="p-4 text-center">
-            <div class="stat-card-value text-orange-600 money">{{ monthly_bills }}</div>
-            <div class="stat-card-label">فواتير الموردين</div>
-        </div>
-    </div>
-</div>
-
-<!-- App Widgets Grid -->
-<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
-    <!-- Invoices Widget -->
-    <div class="widget">
-        <div class="widget-header">
-            <h3 class="widget-title">
-                <svg class="w-4 h-4 inline ml-2 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-                الفواتير
-            </h3>
-            <a href="{% url 'invoicing:create' %}" class="text-primary-600 text-sm hover:underline">+ جديد</a>
-        </div>
-        <div class="widget-body">
-            <div class="space-y-2">
-                {% for inv in recent_invoices %}
-                <a href="{% url 'invoicing:detail' inv.pk %}" class="flex items-center justify-between p-2 hover:bg-gray-50 -mx-2 rounded">
-                    <div>
-                        <span class="font-mono text-sm">{{ inv.invoice_number }}</span>
-                        <span class="text-xs text-gray-500 mr-2">{{ inv.customer.name }}</span>
-                    </div>
-                    <span class="money text-sm font-semibold">{{ inv.amount }}</span>
-                </a>
-                {% empty %}
-                <p class="text-gray-500 text-sm text-center py-4">لا يوجد فواتير</p>
-                {% endfor %}
-            </div>
-        </div>
-        <div class="widget-footer">
-            <a href="{% url 'invoicing:list' %}" class="text-sm text-primary-600 hover:underline">عرض جميع الفواتير</a>
-        </div>
-    </div>
-
-    <!-- Bills Widget -->
-    <div class="widget">
-        <div class="widget-header">
-            <h3 class="widget-title">
-                <svg class="w-4 h-4 inline ml-2 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
-                فواتير الموردين
-            </h3>
-            <a href="{% url 'bills:create' %}" class="text-primary-600 text-sm hover:underline">+ جديد</a>
-        </div>
-        <div class="widget-body">
-            <div class="space-y-2">
-                {% for bill in recent_bills %}
-                <a href="{% url 'bills:detail' bill.pk %}" class="flex items-center justify-between p-2 hover:bg-gray-50 -mx-2 rounded">
-                    <div>
-                        <span class="font-mono text-sm">{{ bill.bill_number }}</span>
-                        <span class="text-xs text-gray-500 mr-2">{{ bill.supplier.name }}</span>
-                    </div>
-                    <span class="money text-sm font-semibold">{{ bill.amount }}</span>
-                </a>
-                {% empty %}
-                <p class="text-gray-500 text-sm text-center py-4">لا يوجد فواتير موردين</p>
-                {% endfor %}
-            </div>
-        </div>
-        <div class="widget-footer">
-            <a href="{% url 'bills:list' %}" class="text-sm text-primary-600 hover:underline">عرض جميع فواتير الموردين</a>
-        </div>
-    </div>
-
-    <!-- Payments Widget -->
-    <div class="widget">
-        <div class="widget-header">
-            <h3 class="widget-title">
-                <svg class="w-4 h-4 inline ml-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg>
-                المدفوعات
-            </h3>
-            <div class="flex gap-2">
-                <a href="{% url 'payments:receive' %}" class="text-green-600 text-xs hover:underline">استلام</a>
-                <a href="{% url 'payments:pay' %}" class="text-red-600 text-xs hover:underline">صرف</a>
-            </div>
-        </div>
-        <div class="widget-body">
-            <div class="space-y-2">
-                {% for payment in recent_payments %}
-                <a href="{% url 'payments:detail' payment.pk %}" class="flex items-center justify-between p-2 hover:bg-gray-50 -mx-2 rounded">
-                    <div>
-                        <span class="font-mono text-sm">{{ payment.payment_number }}</span>
-                        <span class="text-xs mr-2 {% if payment.direction == 'inbound' %}text-green-600{% else %}text-blue-600{% endif %}">
-                            {% if payment.direction == 'inbound' %}وارد{% else %}صادر{% endif %}
+    {% if show_financials %}
+    {# ---------------- Projects ---------------- #}
+    <section class="panel">
+        <header class="dash-head">
+            <h2>المشاريع النشطة</h2>
+            <a href="{% url 'projects:list' %}" class="dash-link">كل المشاريع</a>
+        </header>
+        {% if projects %}
+        <table class="dash-table">
+            <thead>
+                <tr>
+                    <th>المشروع</th>
+                    <th class="hide-sm">العميل</th>
+                    <th class="num">الإيرادات</th>
+                    <th class="num">التكاليف</th>
+                    <th class="num">الهامش</th>
+                    <th class="num hide-sm">مستحق</th>
+                    <th class="w-40 hide-sm">استهلاك الميزانية</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for p in projects %}
+                <tr>
+                    <td><a href="{% url 'projects:detail' p.pk %}" class="hover:underline"><span class="font-mono text-gray-500">{{ p.code }}</span> {{ p.name }}</a></td>
+                    <td class="hide-sm text-gray-600">{{ p.customer.name }}</td>
+                    <td class="num money">{{ p.dash_revenue|amount }}</td>
+                    <td class="num money">{{ p.dash_costs|amount }}</td>
+                    <td class="num money {% if p.dash_margin < 0 %}text-red-700{% endif %}">{{ p.dash_margin|amount }}</td>
+                    <td class="num money hide-sm">{{ p.dash_receivable|amount }}</td>
+                    <td class="hide-sm">
+                        {% if p.dash_budget_pct is not None %}
+                        <span class="budget">
+                            <span class="bar"><span class="bar-fill {% if p.dash_budget_pct >= 100 %}bar-late{% elif p.dash_budget_pct >= 85 %}bar-warn{% endif %}" style="width: {{ p.dash_budget_bar }}%"></span></span>
+                            <span class="num text-xs {% if p.dash_budget_pct >= 100 %}text-red-700{% endif %}">{{ p.dash_budget_pct }}%</span>
                         </span>
-                    </div>
-                    <span class="money text-sm font-semibold">{{ payment.amount }}</span>
-                </a>
-                {% empty %}
-                <p class="text-gray-500 text-sm text-center py-4">لا يوجد مدفوعات</p>
+                        {% else %}<span class="text-gray-400 text-xs">بدون ميزانية</span>{% endif %}
+                    </td>
+                </tr>
                 {% endfor %}
-            </div>
-        </div>
-        <div class="widget-footer">
-            <a href="{% url 'payments:list' %}" class="text-sm text-primary-600 hover:underline">عرض جميع المدفوعات</a>
-        </div>
-    </div>
+            </tbody>
+        </table>
+        {% else %}
+        <p class="dash-empty">لا توجد مشاريع نشطة</p>
+        {% endif %}
+    </section>
+    {% endif %}
 
-    <!-- Advances Widget -->
-    <div class="widget">
-        <div class="widget-header">
-            <h3 class="widget-title">
-                <svg class="w-4 h-4 inline ml-2 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
-                السلف النقدية
-            </h3>
-            <a href="{% url 'advances:create' %}" class="text-primary-600 text-sm hover:underline">+ جديد</a>
-        </div>
-        <div class="widget-body">
-            <div class="space-y-2">
-                {% for adv in recent_advances %}
-                <a href="{% url 'advances:detail' adv.pk %}" class="flex items-center justify-between p-2 hover:bg-gray-50 -mx-2 rounded">
-                    <div>
-                        <span class="font-mono text-sm">{{ adv.advance_number }}</span>
-                        <span class="text-xs text-gray-500 mr-2">{{ adv.recipient.name }}</span>
-                    </div>
-                    <span class="money text-sm font-semibold">{{ adv.amount }}</span>
-                </a>
-                {% empty %}
-                <p class="text-gray-500 text-sm text-center py-4">لا يوجد سلف مفتوحة</p>
-                {% endfor %}
-            </div>
-        </div>
-        <div class="widget-footer">
-            <a href="{% url 'advances:list' %}" class="text-sm text-primary-600 hover:underline">عرض جميع السلف</a>
-        </div>
-    </div>
+    <div class="dash-grid">
+        {% if show_financials %}
+        {# ---------------- Open advances ---------------- #}
+        <section class="panel">
+            <header class="dash-head">
+                <h2>السلف المفتوحة</h2>
+                <a href="{% url 'advances:list' %}" class="dash-link">كل السلف</a>
+            </header>
+            {% if advances.rows %}
+            <table class="dash-table">
+                <thead><tr><th>المستلم</th><th class="hide-sm">المشروع</th><th class="num">منذ</th><th class="num">المتبقي</th></tr></thead>
+                <tbody>
+                    {% for a in advances.rows|slice:":8" %}
+                    <tr>
+                        <td><a href="{% url 'advances:detail' a.pk %}" class="hover:underline">{{ a.recipient.name }}</a> <span class="font-mono text-xs text-gray-400">{{ a.advance_number }}</span></td>
+                        <td class="hide-sm text-gray-600">{{ a.project.code }}</td>
+                        <td class="num {% if a.days_open > 30 %}text-red-700{% endif %}">{{ a.days_open }} يوم</td>
+                        <td class="num money">{{ a.open_amount|amount }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <p class="dash-empty">كل السلف مسوّاة</p>
+            {% endif %}
+        </section>
+        {% endif %}
 
-    <!-- Expenses Widget -->
-    <div class="widget">
-        <div class="widget-header">
-            <h3 class="widget-title">
-                <svg class="w-4 h-4 inline ml-2 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 14l6-6m-5.5.5h.01m4.99 5h.01M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16l3.5-2 3.5 2 3.5-2 3.5 2z"/></svg>
-                المصروفات
-            </h3>
-            <a href="{% url 'expenses:create' %}" class="text-primary-600 text-sm hover:underline">+ جديد</a>
-        </div>
-        <div class="widget-body">
-            <div class="space-y-2">
-                {% for exp in recent_expenses %}
-                <a href="{% url 'expenses:detail' exp.pk %}" class="flex items-center justify-between p-2 hover:bg-gray-50 -mx-2 rounded">
-                    <div>
-                        <span class="font-mono text-sm">{{ exp.expense_number }}</span>
-                        <span class="text-xs text-gray-500 mr-2">{{ exp.description|truncatechars:20 }}</span>
-                    </div>
-                    <span class="money text-sm font-semibold">{{ exp.amount }}</span>
-                </a>
-                {% empty %}
-                <p class="text-gray-500 text-sm text-center py-4">لا يوجد مصروفات</p>
-                {% endfor %}
-            </div>
-        </div>
-        <div class="widget-footer">
-            <a href="{% url 'expenses:list' %}" class="text-sm text-primary-600 hover:underline">عرض جميع المصروفات</a>
-        </div>
-    </div>
-
-    <!-- Projects Widget -->
-    <div class="widget">
-        <div class="widget-header">
-            <h3 class="widget-title">
-                <svg class="w-4 h-4 inline ml-2 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>
-                المشاريع
-            </h3>
-            <a href="{% url 'projects:create' %}" class="text-primary-600 text-sm hover:underline">+ جديد</a>
-        </div>
-        <div class="widget-body">
-            <div class="space-y-2">
-                {% for proj in recent_projects %}
-                <a href="{% url 'projects:detail' proj.pk %}" class="flex items-center justify-between p-2 hover:bg-gray-50 -mx-2 rounded">
-                    <div>
-                        <span class="font-mono text-sm">{{ proj.code }}</span>
-                        <span class="text-xs text-gray-500 mr-2">{{ proj.name|truncatechars:20 }}</span>
-                    </div>
-                    <span class="badge badge-{{ proj.status }}">{{ proj.get_status_display }}</span>
-                </a>
-                {% empty %}
-                <p class="text-gray-500 text-sm text-center py-4">لا يوجد مشاريع</p>
-                {% endfor %}
-            </div>
-        </div>
-        <div class="widget-footer">
-            <a href="{% url 'projects:list' %}" class="text-sm text-primary-600 hover:underline">عرض جميع المشاريع</a>
-        </div>
+        {# ---------------- Recent documents ---------------- #}
+        <section class="panel">
+            <header class="dash-head"><h2>آخر المستندات</h2></header>
+            {% if recent %}
+            <table class="dash-table">
+                <thead><tr><th>المستند</th><th class="hide-sm">الطرف</th><th class="num">المبلغ</th><th>الحالة</th></tr></thead>
+                <tbody>
+                    {% for d in recent %}
+                    <tr>
+                        <td><a href="{{ d.url }}" class="hover:underline"><span class="text-gray-500 text-xs">{{ d.type }}</span> <span class="font-mono">{{ d.number }}</span></a></td>
+                        <td class="hide-sm text-gray-600 truncate max-w-[12rem]">{{ d.party }}</td>
+                        <td class="num money">{{ d.amount|amount }}</td>
+                        <td><span class="badge badge-{{ d.status }}">{{ d.status_label }}</span></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <p class="dash-empty">لا توجد مستندات بعد</p>
+            {% endif %}
+        </section>
     </div>
 </div>
 {% endblock %}

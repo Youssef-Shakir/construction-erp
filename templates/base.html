@@ -3,7 +3,15 @@
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="theme-color" content="#2563eb">
+    <link rel="manifest" href="{% url 'pwa_manifest' %}">
+    <link rel="icon" type="image/png" sizes="32x32" href="{% static 'pwa/favicon-32.png' %}">
+    <link rel="apple-touch-icon" href="{% static 'pwa/apple-touch-icon.png' %}">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="المحاسبة">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="csrf-token" content="{{ csrf_token }}">
     <title>{% block title %}{% endblock %} | نظام المحاسبة</title>
     <link rel="stylesheet" href="{% static 'css/output.css' %}?v=20260906b">
@@ -32,6 +40,7 @@
                     </div>
                 </div>
                 <div class="flex items-center gap-3 shrink-0">
+                    <button type="button" id="pwa-install" class="btn btn-secondary btn-sm" hidden>تثبيت التطبيق</button>
                     <span class="hidden sm:inline text-sm text-gray-600">{{ user.get_full_name|default:user.email }}</span>
                     <form method="post" action="{% url 'accounts:logout' %}" class="inline">
                         {% csrf_token %}
@@ -59,6 +68,7 @@
     <!-- HTMX (vendored: works on an offline/intranet server) -->
     <script src="{% static 'js/htmx.min.js' %}"></script>
     <script src="{% static 'js/uploads.js' %}"></script>
+    <script src="{% static 'js/pwa.js' %}" data-sw="{% url 'pwa_sw' %}" defer></script>
 
     <!-- Keyboard shortcuts + mobile UI -->
     <script>

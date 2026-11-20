@@ -1,0 +1,135 @@
+# Construction ERP - full stack
+#
+#   cp .env.docker.example .env      # then edit the passwords
+#   docker compose up -d --build     # http://localhost:8080
+#   docker compose --profile test run --rm test       # test suite on Postgres + MinIO
+#   docker compose --profile scanner up -d scans      # scanner folder importer
+#
+# Production (HTTPS via Caddy): see docker-compose.prod.yml and docs/DEPLOYMENT.md
+
+x-app: &app
+  build:
+    context: .
+    target: production
+  image: construction-erp:latest
+  env_file: .env
+  environment: &app-env
+    DB_HOST: db
+    DB_PORT: "5432"
+    USE_S3: "True"
+    AWS_S3_ENDPOINT_URL: http://minio:9000
+    # Plain HTTP on localhost; docker-compose.prod.yml turns these on behind HTTPS
+    SECURE_SSL_REDIRECT: ${SECURE_SSL_REDIRECT:-False}
+    SECURE_COOKIES: ${SECURE_COOKIES:-False}
+  security_opt:
+    - no-new-privileges:true
+  cap_drop:
+    - ALL
+  read_only: true
+  tmpfs:
+    - /tmp
+    - /home/app:uid=1001,gid=1001,mode=0700   # gunicorn control socket; rest stays read-only
+  restart: unless-stopped
+
+services:
+  db:
+    image: postgres:16.9-alpine
+    environment:
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+    # no ports: reachable only inside the Docker network
+
+  minio:
+    # MinIO stopped publishing community images in 2025; pgsty/minio is a maintained
+    # build of the same server. Swap via MINIO_IMAGE (e.g. cgr.dev/chainguard/minio).
+    image: ${MINIO_IMAGE:-pgsty/minio:RELEASE.2026-08-04T00-00-00Z}
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+    volumes:
+      - miniodata:/data
+    ports:
+      - "127.0.0.1:${MINIO_CONSOLE_PORT:-9001}:9001"   # admin console, this machine only
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+
+  minio-init:
+    image: ${MC_IMAGE:-pgsty/mc:RELEASE.2026-11-12T00-00-00Z}
+    depends_on:
+      minio:
+        condition: service_healthy
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+      AWS_STORAGE_BUCKET_NAME: ${AWS_STORAGE_BUCKET_NAME}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
+    volumes:
+      - ./docker/minio-init.sh:/minio-init.sh:ro
+    entrypoint: ["/bin/sh", "/minio-init.sh"]
+    restart: "no"
+
+  web:
+    <<: *app
+    environment:
+      <<: *app-env
+      RUN_MIGRATIONS: "1"
+    depends_on:
+      db:
+        condition: service_healthy
+      minio-init:
+        condition: service_completed_successfully
+    ports:
+      - "127.0.0.1:${WEB_PORT:-8080}:8000"
+
+  scans:
+    <<: *app
+    profiles: ["scanner"]
+    command: ["python", "manage.py", "import_scans", "--watch", "--interval", "15"]
+    environment:
+      <<: *app-env
+      SCAN_INBOX_DIR: /scans
+    volumes:
+      # The folder the office scanner saves into (SMB share). Must be writable by uid 1001.
+      - ${SCAN_HOST_DIR:-./scans}:/scans
+    healthcheck:
+      disable: true
+    depends_on:
+      web:
+        condition: service_healthy
+
+  test:
+    build:
+      context: .
+      target: test
+    profiles: ["test"]
+    env_file: .env
+    environment:
+      DB_HOST: db
+      DB_PORT: "5432"
+      TEST_DB: postgres
+      USE_S3: "True"
+      AWS_S3_ENDPOINT_URL: http://minio:9000
+    depends_on:
+      db:
+        condition: service_healthy
+      minio-init:
+        condition: service_completed_successfully
+
+volumes:
+  pgdata:
+  miniodata:

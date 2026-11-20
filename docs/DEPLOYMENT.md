@@ -1,11 +1,58 @@
 # Deployment & scanner setup
 
-Target: one Linux server (Ubuntu 24.04), PostgreSQL 16, gunicorn behind nginx, HTTPS.
+Recommended: **Docker Compose** (section 0). Section 1 describes the same
+setup without Docker (gunicorn + nginx directly on the server).
 
-## Local development
+## 0. Docker (recommended)
+
+Stack: `web` (gunicorn, non-root, read-only filesystem) · `db` (PostgreSQL 16) ·
+`minio` (S3 storage for attachments, private bucket) · `minio-init` (creates the
+bucket and a restricted app user) · optional `scans` (scanner folder importer) ·
+`caddy` (HTTPS, production overlay only).
 
 ```bash
-python3.12 -m venv venv && venv/bin/pip install -r requirements.txt
+cp .env.docker.example .env        # change every "change-me" (openssl rand -base64 36)
+docker compose up -d --build       # http://localhost:8080  (WEB_PORT in .env)
+docker compose logs -f web
+```
+
+On first start `web` applies migrations and creates the admin from
+`DJANGO_SUPERUSER_EMAIL` / `DJANGO_SUPERUSER_PASSWORD`.
+
+**Production server (HTTPS):** point the DNS of `DOMAIN` to the server, open ports 80/443, then
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+```
+
+Caddy obtains and renews the certificate; only ports 80/443 are exposed.
+PostgreSQL and MinIO's S3 API are reachable only inside the Docker network; the
+MinIO console is on `127.0.0.1:9001` (use an SSH tunnel from outside).
+
+| Task | Command |
+|---|---|
+| Run the full test suite on Postgres + MinIO | `docker compose --profile test run --rm test` (local/staging stack only: it writes `test-runs/` objects to the bucket) |
+| Scanner folder importer | set `SCAN_HOST_DIR`, `chown 1001 <dir>`, `docker compose --profile scanner up -d scans` |
+| Compress files uploaded before the compressor existed | `docker compose exec web python manage.py compress_attachments --dry-run` |
+| Django shell | `docker compose exec web python manage.py shell` |
+| Backup DB | `docker compose exec -T db pg_dump -U $DB_USER -Fc $DB_NAME > erp-$(date +%F).dump` |
+| Backup files | `docker compose run --rm --entrypoint sh minio-init -c 'mc alias set l http://minio:9000 $MINIO_ROOT_USER $MINIO_ROOT_PASSWORD && mc mirror l/$AWS_STORAGE_BUCKET_NAME /backup'` (mount a `/backup` volume) |
+| Update | `git pull && docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build` |
+
+**MinIO image:** MinIO stopped publishing community Docker images in 2025, so the
+stack uses `pgsty/minio` (a maintained build of the same server). To use another
+S3 server set `MINIO_IMAGE` / `MC_IMAGE`, or point `AWS_S3_ENDPOINT_URL` at any
+S3-compatible service (AWS S3, Backblaze, Wasabi...) and drop the `minio` services.
+
+**Attachment compression:** scanned PDFs are re-encoded with Ghostscript
+(`ATTACHMENT_PDF_COMPRESSION=ebook`, 150 dpi - readable on screen and paper,
+typically 80-95% smaller); photos are rotated, stripped of GPS data and
+downscaled. The original size is kept on the record ("كان 8.3 MB").
+
+## Local development (without Docker)
+
+```bash
+python3.12 -m venv venv && venv/bin/pip install -r requirements-dev.txt
 npm install && npm run watch:css            # Tailwind
 export DJANGO_SETTINGS_MODULE=config.dev_settings
 venv/bin/python manage.py migrate

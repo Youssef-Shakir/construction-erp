@@ -47,6 +47,21 @@ def company_settings(request):
     })
 
 
+@login_required
+def company_logo(request):
+    """Serve the company logo from any storage backend (private bucket safe)."""
+    logo = CompanySettings.get_settings().logo
+    if not logo:
+        raise Http404
+    try:
+        fh = logo.open('rb')
+    except Exception:
+        raise Http404
+    response = FileResponse(fh, content_type='image/' + (logo.name.rsplit('.', 1)[-1].lower().replace('jpg', 'jpeg')))
+    response['Cache-Control'] = 'private, max-age=3600'
+    return response
+
+
 # Partner views
 @login_required
 def partner_list(request):
@@ -289,7 +304,7 @@ def attachment_download(request, pk):
     else:
         try:
             fh = attachment.file.open('rb')
-        except FileNotFoundError:
+        except Exception:  # FileNotFoundError locally, ClientError on S3/MinIO
             raise Http404('الملف غير موجود على الخادم')
         response = FileResponse(fh, content_type=mime)
 

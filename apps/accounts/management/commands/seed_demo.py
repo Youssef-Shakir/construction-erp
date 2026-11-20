@@ -145,8 +145,8 @@ class Command(BaseCommand):
             ('GEN', 'القيود العامة', 'general'),
             ('CASH', 'يومية النقدية', 'cash'),
             ('BANK', 'يومية البنك', 'bank'),
-            ('SALE', 'يومية المبيعات', 'sale'),
-            ('PURCH', 'يومية المشتريات', 'purchase'),
+            ('SALE', 'يومية المبيعات', 'sales'),
+            ('PURCH', 'يومية المشتريات', 'purchases'),
         ]
 
         for code, name, journal_type in journals:

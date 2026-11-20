@@ -13,6 +13,7 @@ from io import BytesIO
 import pytest
 from django.contrib.auth.models import Group
 from django.contrib.contenttypes.models import ContentType
+from django.core.files.storage import default_storage
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.core.management import call_command
 from django.urls import reverse
@@ -140,7 +141,7 @@ class TestStorage:
         assert att.original_filename == 'passwd.pdf'
         assert att.file.name.startswith('invoicing/invoice/%d/' % invoice.pk)
         assert '..' not in att.file.name
-        assert os.path.exists(att.file.path)
+        assert default_storage.exists(att.file.name)
         assert att.file_size == len(PDF_BYTES)
 
     def test_duplicate_on_same_document_skipped(self, invoice):
@@ -152,7 +153,7 @@ class TestStorage:
     def test_inbox_then_assign_moves_file(self, invoice, django_capture_on_commit_callbacks):
         created, _ = store_attachments([prepare_file(_upload('scan.pdf', PDF_BYTES))], target=None, source='scanner')
         item = created[0]
-        old_path = item.file.path
+        old_name = item.file.name
         assert item.in_inbox and item.file.name.startswith('inbox/')
         assert list(inbox_items()) == [item]
 
@@ -161,8 +162,8 @@ class TestStorage:
         item.refresh_from_db()
         assert item.content_object == invoice
         assert item.file.name.startswith('invoicing/invoice/')
-        assert os.path.exists(item.file.path)
-        assert not os.path.exists(old_path)
+        assert default_storage.exists(item.file.name)
+        assert not default_storage.exists(old_name)
         assert list(attachments_for(invoice)) == [item]
 
     def test_non_document_target_rejected(self, customer):
@@ -292,3 +293,54 @@ class TestImportScans:
         processed = list((drop / 'processed').rglob('*.pdf'))
         assert len(processed) == 2
         assert not any(p.is_file() for p in drop.iterdir())
+
+
+# --------------------------------------------------------------------------
+# Compressor
+# --------------------------------------------------------------------------
+def _scanned_pdf(pages=2):
+    """A 'scanned' PDF: big noisy full-page photos at high resolution (like a 300 dpi scan)."""
+    import random
+    rnd = random.Random(7)
+    imgs = []
+    for _ in range(pages):
+        img = Image.new('RGB', (2480, 3508), 'white')
+        px = img.load()
+        for _ in range(60000):
+            px[rnd.randrange(2480), rnd.randrange(3508)] = (rnd.randrange(256),) * 3
+        imgs.append(img)
+    out = BytesIO()
+    imgs[0].save(out, 'PDF', save_all=True, append_images=imgs[1:], resolution=300.0, quality=95)
+    return out.getvalue()
+
+
+class TestCompressor:
+    def test_large_scan_is_compressed_and_dedupes_on_original(self, invoice, settings):
+        import shutil
+        if not shutil.which('gs'):
+            pytest.skip('Ghostscript not installed (it is in the Docker image)')
+        settings.ATTACHMENT_PDF_COMPRESSION = 'ebook'
+        settings.ATTACHMENT_PDF_COMPRESS_MIN_KB = 100
+        raw = _scanned_pdf()
+        pf = prepare_file(_upload('mfp-scan.pdf', raw))
+        assert pf.content.startswith(b'%PDF-')
+        assert pf.size < len(raw) * 0.9, (pf.size, len(raw))
+        assert pf.original_size == len(raw)
+
+        att = store_attachments([pf], target=invoice)[0][0]
+        assert att.was_compressed and att.original_size == len(raw)
+        # The same scan uploaded again is recognised although gs output differs per run
+        created, skipped = store_attachments([prepare_file(_upload('again.pdf', raw))], target=invoice)
+        assert created == [] and skipped == ['again.pdf']
+
+    def test_compression_off_or_small_files_untouched(self, settings):
+        settings.ATTACHMENT_PDF_COMPRESSION = 'off'
+        pf = prepare_file(_upload('a.pdf', PDF_BYTES))
+        assert pf.content == PDF_BYTES and not pf.original_size > pf.size
+
+    def test_compress_attachments_command_dry_run(self, invoice):
+        from io import StringIO
+        store_attachments([prepare_file(_upload('a.pdf', PDF_BYTES))], target=invoice)
+        out = StringIO()
+        call_command('compress_attachments', dry_run=True, min_kb=0, stdout=out)
+        assert 'files' in out.getvalue()

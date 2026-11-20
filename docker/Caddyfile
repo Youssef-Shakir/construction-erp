@@ -1,0 +1,12 @@
+# HTTPS reverse proxy (automatic Let's Encrypt certificates for $DOMAIN)
+{$DOMAIN} {
+    encode zstd gzip
+    request_body {
+        max_size 30MB
+    }
+    header {
+        -Server
+        Strict-Transport-Security "max-age=31536000"
+    }
+    reverse_proxy web:8000
+}

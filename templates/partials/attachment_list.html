@@ -33,7 +33,10 @@
                 <a href="{{ file_url }}?download=1" class="text-xs text-gray-400 hover:text-gray-600 ms-2" title="تنزيل">⤓</a>
             </td>
             <td>{{ attachment.description|default:"-" }}</td>
-            <td class="whitespace-nowrap">{{ attachment.file_size|filesize }}</td>
+            <td class="whitespace-nowrap">
+                {{ attachment.file_size|filesize }}
+                {% if attachment.was_compressed %}<span class="block text-xs text-gray-400" title="تم ضغط الملف تلقائياً">كان {{ attachment.original_size|filesize }}</span>{% endif %}
+            </td>
             <td>{{ attachment.get_source_display }}</td>
             <td>{{ attachment.uploaded_by.get_full_name|default:attachment.uploaded_by.email|default:"-" }}</td>
             <td class="whitespace-nowrap">{{ attachment.uploaded_at|date:"Y-m-d H:i" }}</td>

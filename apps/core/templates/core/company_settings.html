@@ -83,7 +83,7 @@
                 {% if settings.logo %}
                 <div class="form-group col-span-2">
                     <p class="text-sm text-gray-500 mb-2">الشعار الحالي:</p>
-                    <img src="{{ settings.logo.url }}" alt="شعار الشركة" class="h-20 object-contain border p-2 bg-white">
+                    <img src="{% url 'core:company_logo' %}" alt="شعار الشركة" class="h-20 object-contain border p-2 bg-white">
                 </div>
                 {% endif %}
 

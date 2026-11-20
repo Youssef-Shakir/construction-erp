@@ -17,7 +17,11 @@ scan inbox upload, `import_scans` folder import) goes through
 import hashlib
 import os
 import uuid
-from dataclasses import dataclass, field
+import logging
+import shutil
+import subprocess
+import tempfile
+from dataclasses import dataclass
 from io import BytesIO
 
 from django.apps import apps
@@ -72,13 +76,22 @@ class AttachmentError(Exception):
 
 @dataclass
 class PreparedFile:
+    """
+    A validated file ready to store. `sha256` and `original_size` describe
+    the file AS UPLOADED (before compression), so re-uploading the same scan
+    is detected as a duplicate even though compression output varies.
+    """
     original_filename: str
     content: bytes
     mime_type: str
-    sha256: str = field(init=False)
+    sha256: str = ''
+    original_size: int = 0
 
     def __post_init__(self):
-        self.sha256 = hashlib.sha256(self.content).hexdigest()
+        if not self.sha256:
+            self.sha256 = hashlib.sha256(self.content).hexdigest()
+        if not self.original_size:
+            self.original_size = len(self.content)
 
     @property
     def size(self):
@@ -94,6 +107,9 @@ class PreparedFile:
 # --------------------------------------------------------------------------
 def max_upload_bytes():
     return int(getattr(settings, 'ATTACHMENT_MAX_UPLOAD_MB', 25)) * 1024 * 1024
+
+
+logger = logging.getLogger(__name__)
 
 
 def _max_image_dim():
@@ -189,6 +205,57 @@ def _tiff_to_pdf(data, name):
     return images_to_pdf(frames, f'{base}.pdf')
 
 
+# --------------------------------------------------------------------------
+# PDF compressor (Ghostscript)
+# --------------------------------------------------------------------------
+PDF_PRESETS = {'screen', 'ebook', 'printer', 'prepress'}
+
+
+def compress_pdf(data):
+    """
+    Re-encode a PDF with Ghostscript to shrink scanned pages (an office
+    scanner easily produces 5-20 MB per document at 300 dpi colour).
+
+    Returns the smaller bytes, or None when compression is disabled,
+    unavailable, failed, or saved less than 10%. Never raises: the original
+    file is always a safe fallback.
+
+    settings.ATTACHMENT_PDF_COMPRESSION: 'ebook' (150 dpi, default),
+    'printer' (300 dpi), 'screen' (72 dpi) or 'off'.
+    """
+    preset = getattr(settings, 'ATTACHMENT_PDF_COMPRESSION', 'ebook')
+    if preset not in PDF_PRESETS:
+        return None
+    if len(data) < int(getattr(settings, 'ATTACHMENT_PDF_COMPRESS_MIN_KB', 300)) * 1024:
+        return None
+    gs = shutil.which('gs')
+    if not gs:
+        return None
+
+    with tempfile.TemporaryDirectory(prefix='erp-pdf-') as tmp:
+        src, dst = os.path.join(tmp, 'in.pdf'), os.path.join(tmp, 'out.pdf')
+        with open(src, 'wb') as fh:
+            fh.write(data)
+        cmd = [
+            gs, '-dSAFER', '-dBATCH', '-dNOPAUSE', '-dQUIET', '-sDEVICE=pdfwrite',
+            '-dCompatibilityLevel=1.5', f'-dPDFSETTINGS=/{preset}',
+            '-dDetectDuplicateImages=true', '-dCompressFonts=true',
+            f'-sOutputFile={dst}', src,
+        ]
+        try:
+            subprocess.run(cmd, check=True, timeout=120, capture_output=True)
+            with open(dst, 'rb') as fh:
+                out = fh.read()
+        except (subprocess.SubprocessError, OSError) as exc:
+            logger.warning('PDF compression failed, keeping original: %s', exc)
+            return None
+
+    if not out.startswith(b'%PDF-') or len(out) > len(data) * 0.9:
+        return None
+    logger.info('PDF compressed %d -> %d bytes', len(data), len(out))
+    return out
+
+
 def prepare_file(uploaded):
     """Validate one uploaded file and return a PreparedFile (raises AttachmentError)."""
     name = _safe_name(uploaded.name)
@@ -202,11 +269,17 @@ def prepare_file(uploaded):
     if not matches(data[:16] if ext != '.csv' else data):
         raise AttachmentError(f'محتوى الملف "{name}" لا يطابق امتداده')
 
+    raw_sha, raw_size = hashlib.sha256(data).hexdigest(), len(data)
     if ext in TIFF_EXTENSIONS:
-        return _tiff_to_pdf(data, name)
+        converted = _tiff_to_pdf(data, name)
+        smaller = compress_pdf(converted.content)
+        return PreparedFile(converted.original_filename, smaller or converted.content,
+                            'application/pdf', raw_sha, raw_size)
     if ext in IMAGE_EXTENSIONS:
         data, name = _normalise_image(data, name)
-    return PreparedFile(name, data, mime)
+    elif ext == '.pdf':
+        data = compress_pdf(data) or data
+    return PreparedFile(name, data, mime, raw_sha, raw_size)
 
 
 def prepare_files(uploaded_files, combine_images=False, combined_name=None):
@@ -345,6 +418,7 @@ def store_attachments(prepared_files, *, target=None, user=None, source='upload'
                 uploaded_by=user,
                 mime_type=pf.mime_type,
                 file_size=pf.size,
+                original_size=pf.original_size,
                 sha256=pf.sha256,
                 source=source,
             )

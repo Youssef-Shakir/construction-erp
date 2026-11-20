@@ -1,20 +1,11 @@
-# Django and core
-Django>=5.0,<6.0
-psycopg[binary]>=3.1
-python-decouple>=3.8
-Pillow>=10.0
-weasyprint>=60.0
-
-# History and audit
-django-simple-history>=3.4
-
-# Testing
-pytest>=8.0
-pytest-django>=4.8
-
-# Development
-django-debug-toolbar>=4.3
-
-# Production (optional)
-gunicorn>=21.0
-whitenoise>=6.6
+# Runtime dependencies (pinned; tested together). Dev/test tools: requirements-dev.txt
+Django==5.2.17
+psycopg[binary]==3.3.5
+python-decouple==3.8
+Pillow==12.3.0
+weasyprint==69.0
+django-simple-history==3.13.0
+gunicorn==26.2.0
+whitenoise[brotli]==6.12.0
+django-storages[s3]==1.14.6
+boto3==1.40.76

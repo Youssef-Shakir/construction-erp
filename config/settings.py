@@ -49,6 +49,7 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
+    'apps.core.middleware.HealthCheckMiddleware',  # first: answers /healthz/ before host/SSL checks
     'django.middleware.security.SecurityMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
@@ -144,6 +145,29 @@ STORAGES = {
     },
 }
 
+# Uploaded files on S3-compatible storage (MinIO in Docker, or AWS S3).
+# The bucket stays PRIVATE: every download goes through Django's permission
+# check (core:attachment_download), never a public bucket URL.
+USE_S3 = config('USE_S3', default=False, cast=bool)
+if USE_S3:
+    STORAGES['default'] = {
+        'BACKEND': 'storages.backends.s3.S3Storage',
+        'OPTIONS': {
+            'bucket_name': config('AWS_STORAGE_BUCKET_NAME'),
+            'endpoint_url': config('AWS_S3_ENDPOINT_URL', default=None),  # http://minio:9000
+            'access_key': config('AWS_ACCESS_KEY_ID'),
+            'secret_key': config('AWS_SECRET_ACCESS_KEY'),
+            'region_name': config('AWS_S3_REGION_NAME', default='us-east-1'),
+            'addressing_style': config('AWS_S3_ADDRESSING_STYLE', default='path'),  # MinIO needs path
+            'signature_version': 's3v4',
+            'location': config('AWS_LOCATION', default=''),
+            'default_acl': None,          # bucket policy decides (private)
+            'file_overwrite': False,
+            'querystring_auth': True,
+            'querystring_expire': 300,
+        },
+    }
+
 # Media files (uploads). Attachments are NOT served from MEDIA_URL in
 # production - they go through core:attachment_download (permission check).
 MEDIA_URL = 'media/'
@@ -156,6 +180,9 @@ ATTACHMENT_IMAGE_MAX_DIMENSION = config('ATTACHMENT_IMAGE_MAX_DIMENSION', defaul
 SCAN_INBOX_DIR = config('SCAN_INBOX_DIR', default='')
 # Behind nginx: internal location mapped to MEDIA_ROOT, e.g. /protected-media/
 ATTACHMENT_X_ACCEL_PREFIX = config('ATTACHMENT_X_ACCEL_PREFIX', default='')
+# Compress scanned PDFs with Ghostscript: ebook (150 dpi) | printer (300 dpi) | screen | off
+ATTACHMENT_PDF_COMPRESSION = config('ATTACHMENT_PDF_COMPRESSION', default='ebook')
+ATTACHMENT_PDF_COMPRESS_MIN_KB = config('ATTACHMENT_PDF_COMPRESS_MIN_KB', default=300, cast=int)
 DATA_UPLOAD_MAX_NUMBER_FILES = 50
 FILE_UPLOAD_PERMISSIONS = 0o640
 

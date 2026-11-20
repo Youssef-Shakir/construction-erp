@@ -178,6 +178,7 @@ class Attachment(models.Model):
     description = models.CharField('الوصف', max_length=255, blank=True)
     mime_type = models.CharField('نوع المحتوى', max_length=120, blank=True)
     file_size = models.PositiveBigIntegerField('الحجم', default=0)
+    original_size = models.PositiveBigIntegerField('الحجم قبل الضغط', default=0)
     sha256 = models.CharField('البصمة', max_length=64, blank=True, db_index=True)
     source = models.CharField('المصدر', max_length=20, choices=SOURCE_CHOICES, default='upload')
 
@@ -233,6 +234,10 @@ class Attachment(models.Model):
     def is_pdf(self):
         """Check if attachment is a PDF."""
         return self.file_extension == '.pdf'
+
+    @property
+    def was_compressed(self):
+        return bool(self.original_size) and self.original_size > self.file_size
 
     @property
     def can_display_inline(self):

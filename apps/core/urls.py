@@ -9,6 +9,7 @@ app_name = 'core'
 urlpatterns = [
     # Company settings
     path('settings/company/', views.company_settings, name='company_settings'),
+    path('settings/company/logo/', views.company_logo, name='company_logo'),
 
     # Partners
     path('partners/', views.partner_list, name='partners'),

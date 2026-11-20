@@ -79,8 +79,8 @@ def journals(db):
     """Create journals."""
     return {
         'cash': Journal.objects.create(code='CASH', name='يومية النقدية', type='cash'),
-        'sales': Journal.objects.create(code='SALE', name='يومية المبيعات', type='sale'),
-        'purchase': Journal.objects.create(code='PURCH', name='يومية المشتريات', type='purchase'),
+        'sales': Journal.objects.create(code='SALE', name='يومية المبيعات', type='sales'),
+        'purchase': Journal.objects.create(code='PURCH', name='يومية المشتريات', type='purchases'),
         'general': Journal.objects.create(code='GEN', name='القيود العامة', type='general'),
     }
 

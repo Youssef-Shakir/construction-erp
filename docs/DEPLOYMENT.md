@@ -44,6 +44,12 @@ MinIO console is on `127.0.0.1:9001` (use an SSH tunnel from outside).
 Docker network the `cloudflared` container is on. In Cloudflare Zero Trust -> Networks ->
 Tunnels -> your tunnel -> Public hostnames, route the domain to `http://codia-erp:8000`.
 
+**Existing MinIO / S3 server** (no MinIO container on this machine): append
+`:docker-compose.external-s3.yml` to `COMPOSE_FILE` and fill block A in `.env`
+(`STORAGE_BACKEND=s3`, `S3_ENDPOINT_URL`, `S3_BUCKET`, `S3_ACCESS_KEY`, `S3_SECRET_KEY`,
+`S3_REGION`, `S3_PREFIX`). Use a key that can only read/write that bucket, and keep the
+bucket (or at least the prefix) **private** - downloads always go through Django.
+
 **First deployment on a VPS:** `scripts/vps-setup-deploy-key.sh` (run as the app user)
 creates a read-only GitHub deploy key and clones the repo; afterwards every update is
 `scripts/update.sh` (backup -> pull -> rebuild -> health check -> automatic rollback).

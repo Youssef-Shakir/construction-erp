@@ -148,19 +148,31 @@ STORAGES = {
 # Uploaded files on S3-compatible storage (MinIO in Docker, or AWS S3).
 # The bucket stays PRIVATE: every download goes through Django's permission
 # check (core:attachment_download), never a public bucket URL.
-USE_S3 = config('USE_S3', default=False, cast=bool)
+def _s3(name, alias, default=None):
+    """Short S3_* name (as in the other donialink apps) wins over the AWS_* name."""
+    value = config(alias, default='') or config(name, default='')
+    if value:
+        return value
+    if default is None:
+        raise ImproperlyConfigured(f'Set {name} (or {alias}) when using S3 storage.')
+    return default
+
+
+USE_S3 = config('USE_S3', default=False, cast=bool) or config('STORAGE_BACKEND', default='') == 's3'
 if USE_S3:
     STORAGES['default'] = {
         'BACKEND': 'storages.backends.s3.S3Storage',
         'OPTIONS': {
-            'bucket_name': config('AWS_STORAGE_BUCKET_NAME'),
-            'endpoint_url': config('AWS_S3_ENDPOINT_URL', default=None),  # http://minio:9000
-            'access_key': config('AWS_ACCESS_KEY_ID'),
-            'secret_key': config('AWS_SECRET_ACCESS_KEY'),
-            'region_name': config('AWS_S3_REGION_NAME', default='us-east-1'),
+            'bucket_name': _s3('AWS_STORAGE_BUCKET_NAME', 'S3_BUCKET'),
+            # http://minio:9000 (bundled) or https://apimedia.donialink.com (existing MinIO)
+            'endpoint_url': _s3('AWS_S3_ENDPOINT_URL', 'S3_ENDPOINT_URL', default='') or None,
+            'access_key': _s3('AWS_ACCESS_KEY_ID', 'S3_ACCESS_KEY'),
+            'secret_key': _s3('AWS_SECRET_ACCESS_KEY', 'S3_SECRET_KEY'),
+            'region_name': _s3('AWS_S3_REGION_NAME', 'S3_REGION', default='us-east-1'),
             'addressing_style': config('AWS_S3_ADDRESSING_STYLE', default='path'),  # MinIO needs path
             'signature_version': 's3v4',
-            'location': config('AWS_LOCATION', default=''),
+            # Folder inside a shared bucket, e.g. "codia-erp" -> codia-erp/invoicing/...
+            'location': _s3('AWS_LOCATION', 'S3_PREFIX', default='').strip('/'),
             'default_acl': None,          # bucket policy decides (private)
             'file_overwrite': False,
             'querystring_auth': True,

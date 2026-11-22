@@ -16,6 +16,8 @@ urlpatterns = [
     path('partners/new/', views.partner_create, name='partner_create'),
     path('partners/<int:pk>/', views.partner_detail, name='partner_detail'),
     path('partners/<int:pk>/edit/', views.partner_edit, name='partner_edit'),
+    path('partners/quick/', views.partner_quick, name='partner_quick_create'),
+    path('partners/quick/<int:pk>/', views.partner_quick, name='partner_quick_edit'),
 
     # Documents/Attachments
     path('', views.documents, name='documents'),

@@ -9,7 +9,7 @@ from urllib.parse import quote
 
 from django.conf import settings
 from django.db import transaction
-from django.http import FileResponse, Http404, HttpResponse, HttpResponseForbidden
+from django.http import FileResponse, Http404, HttpResponse, HttpResponseForbidden, JsonResponse
 from django.views.decorators.http import require_POST
 from django.contrib.contenttypes.models import ContentType
 
@@ -23,7 +23,7 @@ from .attachments import (
     prepare_files, store_attachments,
 )
 from .models import CompanySettings, Partner, Attachment
-from .forms import CompanySettingsForm, PartnerForm, AttachmentForm
+from .forms import CompanySettingsForm, PartnerForm, PartnerQuickForm, AttachmentForm
 
 
 @login_required
@@ -146,6 +146,35 @@ def partner_detail(request, pk):
     return render(request, 'core/partner_detail.html', {
         'partner': partner,
     })
+
+
+@login_required
+def partner_quick(request, pk=None):
+    """
+    Pop-up create/edit of a customer, supplier or employee from inside another
+    form (the "+" / pencil buttons next to partner fields, quick_create.js).
+    GET -> form fragment; valid POST -> JSON {id, label}; invalid -> fragment, 400.
+    """
+    partner = get_object_or_404(Partner, pk=pk) if pk else None
+    types = dict(Partner.PARTNER_TYPES)
+    if partner:
+        fixed_type = partner.type          # changing type could drop it from the field's list
+    else:
+        fixed_type = request.GET.get('type', '') if request.GET.get('type') in types else ''
+    initial = {}
+    if not fixed_type and request.GET.get('default') in types:
+        initial['type'] = request.GET['default']
+
+    form = PartnerQuickForm(request.POST or None, instance=partner, fixed_type=fixed_type, initial=initial)
+    if request.method == 'POST' and form.is_valid():
+        obj = form.save(commit=False)
+        obj.save(user=request.user)
+        return JsonResponse({'id': obj.pk, 'label': str(obj), 'created': partner is None})
+
+    title = f'تعديل: {partner.name}' if partner else 'إضافة ' + (types.get(fixed_type) or 'اسم جديد')
+    return render(request, 'core/partner_quick_form.html', {
+        'form': form, 'title': title, 'partner': partner,
+    }, status=400 if request.method == 'POST' else 200)
 
 
 # Documents/Attachments views

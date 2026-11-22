@@ -1,0 +1,65 @@
+{% extends "pdf/base.html" %}{% load erp_extras %}
+{% block title %}كشف سلفة {{ advance.advance_number }}{% endblock %}
+{% block doc_title %}كشف سلفة{% endblock %}
+{% block doc_number %}{{ advance.advance_number }}{% endblock %}
+{% block doc_subtitle %}{{ advance.get_status_display }}{% endblock %}
+
+{% block content %}
+<table class="boxes"><tr>
+  <td>
+    <div class="box-title">المستلم</div>
+    <strong>{{ advance.recipient.name }}</strong>
+    <table class="kv">
+      <tr><td class="k">المشروع</td><td>{{ advance.project.code }} - {{ advance.project.name }}</td></tr>
+      <tr><td class="k">تاريخ السلفة</td><td><span class="num">{{ advance.date|date:"Y-m-d" }}</span></td></tr>
+      {% if advance.purpose %}<tr><td class="k">الغرض</td><td>{{ advance.purpose }}</td></tr>{% endif %}
+    </table>
+  </td>
+  <td>
+    <div class="box-title">التسوية</div>
+    <table class="kv">
+      <tr><td class="k">مبلغ السلفة</td><td class="num">{{ advance.amount|amount }}</td></tr>
+      <tr><td class="k">المصروفات</td><td class="num">{{ total_expenses|amount }}</td></tr>
+      <tr><td class="k">المردود النقدي</td><td class="num">{{ total_returned|amount }}</td></tr>
+      <tr><td class="k"><strong>المتبقي</strong></td><td class="num"><strong>{{ remaining|amount }}</strong></td></tr>
+    </table>
+  </td>
+</tr></table>
+
+<h2 class="section">المصروفات من السلفة</h2>
+<table class="lines">
+  <thead><tr><th style="width:20mm">التاريخ</th><th style="width:26mm">الرقم</th><th>البيان</th><th>الحساب</th><th style="width:20mm">رقم الإيصال</th><th class="num" style="width:26mm">المبلغ</th></tr></thead>
+  <tbody>
+  {% for e in expenses %}
+    <tr><td class="num">{{ e.date|date:"Y-m-d" }}</td><td class="num">{{ e.expense_number }}</td><td>{{ e.description }}</td><td>{{ e.account.name }}</td><td class="num">{{ e.receipt_number }}</td><td class="num">{{ e.amount|amount }}</td></tr>
+  {% empty %}
+    <tr><td colspan="6" class="muted">لا يوجد مصروفات مرحّلة</td></tr>
+  {% endfor %}
+  </tbody>
+  <tfoot><tr><td colspan="5">إجمالي المصروفات</td><td class="num">{{ total_expenses|amount }}</td></tr></tfoot>
+</table>
+
+{% if returns %}
+<h2 class="section">المردود النقدي</h2>
+<table class="lines">
+  <thead><tr><th style="width:20mm">التاريخ</th><th style="width:26mm">الرقم</th><th>ملاحظات</th><th class="num" style="width:26mm">المبلغ</th></tr></thead>
+  <tbody>
+  {% for r in returns %}<tr><td class="num">{{ r.date|date:"Y-m-d" }}</td><td class="num">{{ r.return_number }}</td><td>{{ r.notes }}</td><td class="num">{{ r.amount|amount }}</td></tr>{% endfor %}
+  </tbody>
+  <tfoot><tr><td colspan="3">إجمالي المردود</td><td class="num">{{ total_returned|amount }}</td></tr></tfoot>
+</table>
+{% endif %}
+
+<table class="totals">
+  <tr><td>مبلغ السلفة</td><td class="num">{{ advance.amount|amount }}</td></tr>
+  <tr><td>- المصروفات</td><td class="num">{{ total_expenses|amount }}</td></tr>
+  <tr><td>- المردود</td><td class="num">{{ total_returned|amount }}</td></tr>
+  <tr class="grand"><td>المتبقي على الموظف</td><td class="num">{{ remaining|amount }} {{ company.currency_symbol }}</td></tr>
+</table>
+{% endblock %}
+
+{% block signature_boxes %}
+<td><div class="line">المحاسب</div></td>
+<td><div class="line">المدير</div></td>
+<td><div class="line">توقيع الموظف ({{ advance.recipient.name }})</div></td>
+{% endblock %}

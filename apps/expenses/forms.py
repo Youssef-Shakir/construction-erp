@@ -4,6 +4,7 @@ Forms for expenses app.
 from django import forms
 from .models import Expense, ExpenseBatch, PaperReceipt
 from apps.core.models import Partner
+from apps.core.forms import enable_quick_create
 from apps.projects.models import Project
 from apps.advances.models import CashAdvance
 from apps.accounting.models import Account
@@ -43,11 +44,11 @@ class ExpenseForm(forms.ModelForm):
             is_active=True
         ).order_by('code')
 
-        self.fields['partner'].queryset = Partner.objects.filter(
-            type='supplier',
-            is_active=True
-        )
+        # Paid to: any supplier, customer or employee - new ones can be added from the form
+        self.fields['partner'].queryset = Partner.objects.filter(is_active=True)
         self.fields['partner'].required = False
+        self.fields['partner'].label = 'الجهة المدفوع لها'
+        enable_quick_create(self.fields['partner'], default='supplier')
 
 
 class ExpenseLineForm(forms.ModelForm):
@@ -126,3 +127,4 @@ class PaperReceiptForm(forms.ModelForm):
             type='employee',
             is_active=True
         )
+        enable_quick_create(self.fields['received_from'], 'employee')

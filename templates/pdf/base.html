@@ -1,0 +1,113 @@
+{% load erp_extras %}<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<title>{% block title %}{% endblock %}</title>
+<style>
+  @page {
+    size: A4;
+    margin: 14mm 14mm 20mm 14mm;
+    @bottom-center { content: element(footer); }
+    @bottom-left { content: counter(page) " / " counter(pages); font-size: 8pt; color: #888; }
+  }
+  * { box-sizing: border-box; }
+  body {
+    font-family: 'Noto Naskh Arabic', 'Noto Sans Arabic', 'DejaVu Sans', sans-serif;
+    font-size: 10pt; line-height: 1.5; color: #1f2937; direction: rtl; margin: 0;
+  }
+  .accent { color: {{ company.pdf_accent_color|default:'#1d4ed8' }}; }
+  .num { direction: ltr; text-align: left; white-space: nowrap; }
+
+  /* Header: company on the right, document title on the left */
+  .doc-header { width: 100%; border-collapse: collapse; margin-bottom: 4mm; }
+  .doc-header td { vertical-align: top; padding: 0; }
+  .doc-header .logo { max-height: 22mm; max-width: 45mm; margin-bottom: 2mm; }
+  .company-name { font-size: 15pt; font-weight: bold; margin: 0; }
+  .company-note { font-size: 9pt; color: #4b5563; margin: 0; }
+  .company-lines { font-size: 8.5pt; color: #6b7280; margin-top: 1mm; }
+  .doc-title { text-align: left; }
+  .doc-title h1 { font-size: 18pt; margin: 0; color: {{ company.pdf_accent_color|default:'#1d4ed8' }}; }
+  .doc-title .doc-no { font-size: 11pt; font-weight: bold; }
+  .rule { height: 1.2mm; background: {{ company.pdf_accent_color|default:'#1d4ed8' }}; margin: 0 0 6mm 0; }
+
+  /* Info boxes (bill-to / document details) */
+  .boxes { width: 100%; border-collapse: collapse; margin-bottom: 6mm; }
+  .boxes > tbody > tr > td { width: 50%; vertical-align: top; border: 1px solid #d1d5db; padding: 3mm 4mm; }
+  .box-title { font-size: 8pt; color: #6b7280; font-weight: bold; margin-bottom: 1mm; }
+  .kv { width: 100%; border-collapse: collapse; }
+  .kv td { border: 0; padding: 0.6mm 0; }
+  .kv td.k { color: #6b7280; width: 32mm; }
+
+  /* Data tables */
+  table.lines { width: 100%; border-collapse: collapse; margin-bottom: 5mm; }
+  table.lines th {
+    background: {{ company.pdf_accent_color|default:'#1d4ed8' }}; color: #fff; font-weight: bold;
+    font-size: 9pt; padding: 2mm; text-align: right;
+  }
+  table.lines td { border-bottom: 1px solid #e5e7eb; padding: 1.8mm 2mm; font-size: 9pt; vertical-align: top; }
+  table.lines tr:nth-child(even) td { background: #f9fafb; }
+  table.lines th.num, table.lines td.num { text-align: left; }
+  table.lines tfoot td { font-weight: bold; border-top: 1.5px solid #111827; border-bottom: 0; background: #fff; }
+  thead { display: table-header-group; }
+  tr { page-break-inside: avoid; }
+
+  /* Totals block (left side) */
+  .totals { width: 80mm; margin-right: auto; border-collapse: collapse; margin-bottom: 5mm; }
+  .totals td { padding: 1.5mm 2mm; border-bottom: 1px solid #e5e7eb; }
+  .totals tr.grand td { font-size: 12pt; font-weight: bold; color: #fff; background: {{ company.pdf_accent_color|default:'#1d4ed8' }}; border: 0; }
+
+  .note { border: 1px solid #e5e7eb; background: #f9fafb; padding: 3mm 4mm; margin-bottom: 5mm; font-size: 9pt; }
+  .note-title { font-weight: bold; font-size: 8.5pt; color: #6b7280; margin-bottom: 1mm; }
+  .muted { color: #6b7280; }
+  .pos { color: #15803d; } .neg { color: #b91c1c; }
+  .stamp { display: inline-block; border: 2px solid; padding: 0.5mm 3mm; font-weight: bold; font-size: 10pt; }
+  h2.section { font-size: 11pt; margin: 4mm 0 2mm 0; color: {{ company.pdf_accent_color|default:'#1d4ed8' }}; }
+
+  .signatures { width: 100%; margin-top: 14mm; border-collapse: collapse; table-layout: fixed; page-break-inside: avoid; }
+  .signatures td { width: 33.33%; text-align: center; padding: 0 6mm; }
+  .signatures .line { border-top: 1px solid #374151; padding-top: 1.5mm; font-size: 9pt; color: #374151; }
+
+  #footer { position: running(footer); font-size: 8pt; color: #6b7280; text-align: center; }
+  {% block extra_style %}{% endblock %}
+</style>
+</head>
+<body>
+  <div id="footer">
+    {% if company.pdf_footer_text %}{{ company.pdf_footer_text }}{% else %}{{ company.name }}{% if company.phone %} · {{ company.phone }}{% endif %}{% if company.email %} · {{ company.email }}{% endif %}{% endif %}
+  </div>
+
+  <table class="doc-header"><tr>
+    <td>
+      {% if logo_src %}<img class="logo" src="{{ logo_src }}" alt=""><br>{% endif %}
+      <p class="company-name">{{ company.name }}</p>
+      {% if company.pdf_header_note %}<p class="company-note">{{ company.pdf_header_note }}</p>{% endif %}
+      <div class="company-lines">
+        {% if company.address %}{{ company.address|linebreaksbr }}<br>{% endif %}
+        {% if company.phone %}هاتف: <span class="num">{{ company.phone }}</span>{% endif %}
+        {% if company.email %} · {{ company.email }}{% endif %}
+        {% if company.tax_number %}<br>الرقم الضريبي: <span class="num">{{ company.tax_number }}</span>{% endif %}
+      </div>
+    </td>
+    <td class="doc-title">
+      <h1>{% block doc_title %}{% endblock %}</h1>
+      <div class="doc-no">{% block doc_number %}{% endblock %}</div>
+      <div class="muted">{% block doc_subtitle %}{% endblock %}</div>
+    </td>
+  </tr></table>
+  <div class="rule"></div>
+
+  {% block content %}{% endblock %}
+
+  {% block signatures %}
+  {% if company.pdf_show_signatures %}
+  <table class="signatures"><tr>
+    {% block signature_boxes %}
+    <td><div class="line">المحاسب</div></td>
+    <td><div class="line">المدير</div></td>
+    <td><div class="line">المستلم</div></td>
+    {% endblock %}
+  </tr></table>
+  {% endif %}
+  {% endblock %}
+</body>
+</html>

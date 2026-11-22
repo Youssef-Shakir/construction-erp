@@ -1,6 +1,7 @@
 """
 Views for advances app.
 """
+from apps.core.navigation import project_from_query, redirect_next
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
@@ -78,9 +79,13 @@ def advance_create(request):
             _save_attachments(request, CashAdvance, advance.pk)
 
             messages.success(request, f'تم إنشاء السلفة {advance.advance_number}')
-            return redirect('advances:detail', pk=advance.pk)
+            return redirect_next(request, 'advances:detail', pk=advance.pk)
     else:
-        form = CashAdvanceForm(initial={'date': timezone.now().date()})
+        initial = {'date': timezone.now().date()}
+        project = project_from_query(request)
+        if project:
+            initial['project'] = project
+        form = CashAdvanceForm(initial=initial)
 
     return render(request, 'advances/advance_form.html', {
         'form': form,

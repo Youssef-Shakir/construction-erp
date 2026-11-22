@@ -1,0 +1,22 @@
+<form method="post" class="quick-form" novalidate>
+    {% csrf_token %}
+    <div class="quick-form-head">
+        <h3>{{ title }}</h3>
+        <button type="button" class="quick-close" data-quick-cancel aria-label="إغلاق">&times;</button>
+    </div>
+    {% if form.non_field_errors %}<p class="form-error">{{ form.non_field_errors.0 }}</p>{% endif %}
+    <div class="form-grid">
+        {% for field in form.visible_fields %}
+        <div class="form-group {% if field.name == 'name' or field.name == 'address' %}col-span-2{% endif %}">
+            <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}{% if field.field.required %} <span class="text-red-500">*</span>{% endif %}</label>
+            {{ field }}
+            {% if field.errors %}<p class="form-error">{{ field.errors.0 }}</p>{% endif %}
+        </div>
+        {% endfor %}
+        {% for field in form.hidden_fields %}{{ field }}{% endfor %}
+    </div>
+    <div class="quick-form-actions">
+        <button type="submit" class="btn btn-primary">حفظ</button>
+        <button type="button" class="btn btn-secondary" data-quick-cancel>إلغاء</button>
+    </div>
+</form>

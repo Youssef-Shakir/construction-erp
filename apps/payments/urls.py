@@ -10,6 +10,7 @@ urlpatterns = [
     path('', views.payment_list, name='list'),
     path('receive/', views.payment_create, {'direction': 'inbound'}, name='receive'),
     path('pay/', views.payment_create, {'direction': 'outbound'}, name='pay'),
+    path('<int:pk>/pdf/', views.payment_pdf, name='pdf'),
     path('<int:pk>/', views.payment_detail, name='detail'),
     path('<int:pk>/edit/', views.payment_edit, name='edit'),
     path('<int:pk>/post/', views.payment_post, name='post'),

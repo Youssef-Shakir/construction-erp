@@ -4,6 +4,7 @@ Forms for payments app.
 from django import forms
 from .models import Payment, PaymentAllocation
 from apps.core.models import Partner
+from apps.core.forms import enable_quick_create
 from apps.accounting.models import Account
 
 
@@ -46,6 +47,9 @@ class PaymentForm(forms.ModelForm):
             )
         else:
             self.fields['partner'].queryset = Partner.objects.filter(is_active=True)
+        partner_type = {'inbound': 'customer', 'outbound': 'supplier'}.get(
+            direction or getattr(self.instance, 'direction', ''), '')
+        enable_quick_create(self.fields['partner'], partner_type)
 
 
 class PaymentAllocationForm(forms.Form):

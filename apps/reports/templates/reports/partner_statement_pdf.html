@@ -1,0 +1,76 @@
+{% extends "pdf/base.html" %}{% load erp_extras %}
+{% block title %}{{ statement.title }} - {{ partner.name }}{% endblock %}
+{% block doc_title %}{{ statement.title }}{% endblock %}
+{% block doc_number %}{{ partner.code }}{% endblock %}
+{% block doc_subtitle %}من <span class="num">{{ date_from|date:"Y-m-d"|default:"البداية" }}</span> إلى <span class="num">{{ date_to|date:"Y-m-d"|default:"اليوم" }}</span>{% endblock %}
+
+{% block content %}
+<table class="boxes"><tr>
+  <td>
+    <div class="box-title">{% if partner.type == 'customer' %}العميل{% elif partner.type == 'supplier' %}المورد{% else %}الموظف{% endif %}</div>
+    <strong>{{ partner.name }}</strong>
+    <table class="kv">
+      {% if partner.phone or partner.mobile %}<tr><td class="k">الهاتف</td><td><span class="num">{{ partner.phone|default:partner.mobile }}</span></td></tr>{% endif %}
+      {% if partner.tax_number %}<tr><td class="k">الرقم الضريبي</td><td><span class="num">{{ partner.tax_number }}</span></td></tr>{% endif %}
+      {% if project %}<tr><td class="k">المشروع</td><td>{{ project.code }} - {{ project.name }}</td></tr>{% endif %}
+    </table>
+  </td>
+  <td>
+    <div class="box-title">ملخص</div>
+    <table class="kv">
+      <tr><td class="k">الرصيد الافتتاحي</td><td class="num">{{ statement.opening|amount }}</td></tr>
+      <tr><td class="k">مدين</td><td class="num">{{ statement.total_debit|amount }}</td></tr>
+      <tr><td class="k">دائن</td><td class="num">{{ statement.total_credit|amount }}</td></tr>
+      <tr><td class="k"><strong>الرصيد الختامي</strong></td><td class="num"><strong>{{ statement.closing|amount }}</strong></td></tr>
+    </table>
+  </td>
+</tr></table>
+
+<table class="lines">
+  <thead><tr><th style="width:20mm">التاريخ</th><th style="width:26mm">المستند</th><th>البيان</th>
+    <th class="num" style="width:24mm">مدين</th><th class="num" style="width:24mm">دائن</th><th class="num" style="width:26mm">الرصيد</th></tr></thead>
+  <tbody>
+    <tr><td class="num">{{ date_from|date:"Y-m-d"|default:"" }}</td><td></td><td><strong>رصيد افتتاحي</strong></td><td></td><td></td><td class="num"><strong>{{ statement.opening|amount }}</strong></td></tr>
+    {% for row in statement.rows %}
+    <tr>
+      <td class="num">{{ row.date|date:"Y-m-d" }}</td>
+      <td class="num">{{ row.number }}</td>
+      <td>{{ row.description }}{% if row.project and not project %} <span class="muted">({{ row.project }})</span>{% endif %}</td>
+      <td class="num">{% if row.debit %}{{ row.debit|amount }}{% endif %}</td>
+      <td class="num">{% if row.credit %}{{ row.credit|amount }}{% endif %}</td>
+      <td class="num">{{ row.balance|amount }}</td>
+    </tr>
+    {% empty %}
+    <tr><td colspan="6" class="muted">لا توجد حركات في هذه الفترة</td></tr>
+    {% endfor %}
+  </tbody>
+  <tfoot><tr><td colspan="3">الإجمالي</td><td class="num">{{ statement.total_debit|amount }}</td><td class="num">{{ statement.total_credit|amount }}</td><td class="num">{{ statement.closing|amount }}</td></tr></tfoot>
+</table>
+
+<table class="totals">
+  <tr class="grand"><td>الرصيد الختامي</td><td class="num">{{ statement.closing|amount }} {{ company.currency_symbol }}</td></tr>
+  <tr><td colspan="2" class="muted">{{ statement.closing_meaning }}</td></tr>
+</table>
+
+{% if advance_rows %}
+<h2 class="section">ملخص السلف</h2>
+<table class="lines">
+  <thead><tr><th>السلفة</th><th>التاريخ</th><th>المشروع</th><th class="num">المبلغ</th><th class="num">المصروف</th><th class="num">المردود</th><th class="num">المتبقي</th></tr></thead>
+  <tbody>
+  {% for r in advance_rows %}
+    <tr><td class="num">{{ r.advance.advance_number }}</td><td class="num">{{ r.advance.date|date:"Y-m-d" }}</td><td>{{ r.advance.project.code }}</td>
+      <td class="num">{{ r.amount|amount }}</td><td class="num">{{ r.expenses|amount }}</td><td class="num">{{ r.returned|amount }}</td><td class="num">{{ r.remaining|amount }}</td></tr>
+  {% endfor %}
+  </tbody>
+  <tfoot><tr><td colspan="3">الإجمالي</td><td class="num">{{ advance_totals.amount|amount }}</td><td class="num">{{ advance_totals.expenses|amount }}</td><td class="num">{{ advance_totals.returned|amount }}</td><td class="num">{{ advance_totals.remaining|amount }}</td></tr></tfoot>
+</table>
+{% endif %}
+
+<p class="muted" style="font-size:8.5pt">نرجو مطابقة الكشف وإبلاغنا بأي ملاحظة خلال 15 يوماً من تاريخه، وإلا اعتُبر الرصيد صحيحاً.</p>
+{% endblock %}
+
+{% block signature_boxes %}
+<td><div class="line">المحاسب</div></td>
+<td><div class="line">المدير</div></td>
+<td><div class="line">توقيع {% if partner.type == 'customer' %}العميل{% elif partner.type == 'supplier' %}المورد{% else %}الموظف{% endif %} بالمطابقة</div></td>
+{% endblock %}

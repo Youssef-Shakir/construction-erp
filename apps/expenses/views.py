@@ -14,6 +14,7 @@ from apps.accounting.posting import PostingError
 from apps.advances.models import CashAdvance
 from apps.core.models import Attachment
 from apps.core.attachments import attach_from_request
+from apps.core.navigation import project_from_query, redirect_next
 from .models import Expense, ExpenseBatch, PaperReceipt
 from .forms import ExpenseForm, PaperReceiptForm
 
@@ -80,6 +81,9 @@ def expense_create(request):
         advance = get_object_or_404(CashAdvance, pk=advance_pk)
         initial['advance'] = advance
         initial['project'] = advance.project
+    project = project_from_query(request)
+    if project:
+        initial['project'] = project
 
     if request.method == 'POST':
         form = ExpenseForm(request.POST)
@@ -97,7 +101,7 @@ def expense_create(request):
             _save_attachments(request, Expense, expense.pk)
 
             messages.success(request, f'تم إنشاء المصروف {expense.expense_number}')
-            return redirect('expenses:detail', pk=expense.pk)
+            return redirect_next(request, 'expenses:detail', pk=expense.pk)
     else:
         form = ExpenseForm(initial=initial)
 

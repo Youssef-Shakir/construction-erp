@@ -18,9 +18,25 @@
         {% endif %}
         <span class="text-gray-500">{{ project.customer.name }}</span>
     </div>
-    <div class="flex items-center gap-2">
-        <a href="{% url 'projects:report_pdf' project.pk %}" class="btn btn-secondary" target="_blank">تصدير تقرير PDF</a>
+    <div class="flex items-center gap-2 flex-wrap">
+        <a href="{% url 'projects:report_pdf' project.pk %}" class="btn btn-secondary" target="_blank">تقرير المشروع PDF</a>
+        {% if can_view_statements %}
+        <a href="{% url 'reports:partner_statement' project.customer.pk %}?project={{ project.pk }}" class="btn btn-secondary">كشف حساب العميل</a>
+        {% endif %}
         <a href="{% url 'projects:edit' project.pk %}" class="btn btn-secondary">تعديل</a>
+    </div>
+</div>
+
+<!-- Add documents to this project without leaving it (forms come back here after saving) -->
+<div class="panel p-3 mb-4">
+    <div class="text-xs text-gray-500 mb-2">إضافة إلى هذا المشروع</div>
+    <div class="page-actions">
+        <a href="{% url 'expenses:create' %}{{ add_query }}" class="btn btn-primary btn-sm">+ مصروف</a>
+        <a href="{% url 'bills:create' %}{{ add_query }}" class="btn btn-secondary btn-sm">+ فاتورة مورد</a>
+        <a href="{% url 'invoicing:create' %}{{ add_query }}" class="btn btn-secondary btn-sm">+ فاتورة للعميل</a>
+        <a href="{% url 'advances:create' %}{{ add_query }}" class="btn btn-secondary btn-sm">+ سلفة</a>
+        <a href="{% url 'payments:receive' %}{{ add_query }}" class="btn btn-secondary btn-sm">+ استلام دفعة من العميل</a>
+        <button type="button" class="btn btn-secondary btn-sm" data-open-tab="attachments">+ مرفق</button>
     </div>
 </div>
 
@@ -94,6 +110,7 @@
 
     <!-- Invoices tab -->
     <div id="tab-invoices" class="tab-content p-4">
+        <div class="mb-3"><a href="{% url 'invoicing:create' %}{{ add_query }}" class="btn btn-secondary btn-sm">+ فاتورة للعميل</a></div>
         {% if invoices %}
         <table class="data-table">
             <thead>
@@ -130,6 +147,7 @@
 
     <!-- Bills tab -->
     <div id="tab-bills" class="tab-content p-4 hidden">
+        <div class="mb-3"><a href="{% url 'bills:create' %}{{ add_query }}" class="btn btn-secondary btn-sm">+ فاتورة مورد</a></div>
         {% if bills %}
         <table class="data-table">
             <thead>
@@ -168,6 +186,7 @@
 
     <!-- Expenses tab -->
     <div id="tab-expenses" class="tab-content p-4 hidden">
+        <div class="mb-3"><a href="{% url 'expenses:create' %}{{ add_query }}" class="btn btn-secondary btn-sm">+ مصروف</a></div>
         {% if expenses %}
         <table class="data-table">
             <thead>
@@ -204,6 +223,7 @@
 
     <!-- Advances tab -->
     <div id="tab-advances" class="tab-content p-4 hidden">
+        <div class="mb-3"><a href="{% url 'advances:create' %}{{ add_query }}" class="btn btn-secondary btn-sm">+ سلفة</a></div>
         {% if advances %}
         <table class="data-table">
             <thead>
@@ -265,6 +285,12 @@ document.querySelectorAll('.tab').forEach(tab => {
         this.classList.add('active');
         // Show corresponding content
         document.getElementById('tab-' + this.dataset.tab).classList.remove('hidden');
+    });
+});
+document.querySelectorAll('[data-open-tab]').forEach(btn => {
+    btn.addEventListener('click', () => {
+        const tab = document.querySelector('.tab[data-tab="' + btn.dataset.openTab + '"]');
+        if (tab) { tab.click(); tab.scrollIntoView({behavior: 'smooth', block: 'start'}); }
     });
 });
 </script>

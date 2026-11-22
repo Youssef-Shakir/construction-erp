@@ -4,6 +4,7 @@ Forms for advances app.
 from django import forms
 from .models import CashAdvance, AdvanceReturn
 from apps.core.models import Partner
+from apps.core.forms import enable_quick_create
 from apps.projects.models import Project
 
 
@@ -28,6 +29,7 @@ class CashAdvanceForm(forms.ModelForm):
             type='employee',
             is_active=True
         )
+        enable_quick_create(self.fields['recipient'], 'employee')
 
 
 class AdvanceReturnForm(forms.ModelForm):

@@ -22,6 +22,7 @@
             {% endif %}
         </div>
         <div class="flex items-center gap-2">
+            <a href="{% url 'payments:pdf' payment.pk %}" class="btn btn-secondary btn-sm" target="_blank">{% if payment.direction == 'inbound' %}سند قبض{% else %}سند صرف{% endif %} PDF</a>
             {% if payment.status == 'draft' %}
                 <a href="{% url 'payments:edit' payment.pk %}" class="btn btn-secondary btn-sm">تعديل</a>
                 {% if can_post %}

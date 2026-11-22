@@ -4,6 +4,7 @@ Forms for invoicing app.
 from django import forms
 from .models import Invoice, Bill
 from apps.core.models import Partner
+from apps.core.forms import enable_quick_create
 from apps.projects.models import Project
 from apps.accounting.models import Account
 
@@ -30,6 +31,7 @@ class InvoiceForm(forms.ModelForm):
             type='customer',
             is_active=True
         )
+        enable_quick_create(self.fields['customer'], 'customer')
 
 
 class BillForm(forms.ModelForm):
@@ -57,6 +59,7 @@ class BillForm(forms.ModelForm):
             type='supplier',
             is_active=True
         )
+        enable_quick_create(self.fields['supplier'], 'supplier')
         self.fields['account'].queryset = Account.objects.filter(
             account_type__code='expense',
             is_active=True

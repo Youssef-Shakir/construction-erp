@@ -119,8 +119,14 @@ def project_detail(request, pk):
     # Get history
     history_records = project.history.all()[:50]
 
+    from urllib.parse import urlencode
+    from apps.accounts.permissions import can_view_ledger
+
     context = {
         'project': project,
+        # appended to "add expense/invoice/..." links: prefill + come back here after saving
+        'add_query': '?' + urlencode({'project': project.pk, 'next': request.path}),
+        'can_view_statements': can_view_ledger(request.user),
         'invoices': invoices,
         'bills': bills,
         'expenses': expenses,
@@ -141,37 +147,12 @@ def project_report_pdf(request, pk):
     project-scoped income statement (revenue/expense accounts, net income).
     Linked from the project page and from the P&L report.
     """
-    from apps.core.models import CompanySettings
     from apps.accounting.posting import get_income_statement
+    from apps.core.pdf import render_pdf
 
     project = get_object_or_404(Project.objects.select_related('customer'), pk=pk)
-    company = CompanySettings.get_settings()
-
     as_of_date = parse_date(request.GET.get('as_of_date', '')) or timezone.now().date()
     statement = get_income_statement(as_of_date, project=project)
-
-    html_string = render_to_string('projects/project_report_pdf.html', {
-        'project': project,
-        'company': company,
-        'as_of_date': as_of_date,
-        **statement,
-    })
-
-    try:
-        from weasyprint import HTML, CSS
-        from weasyprint.text.fonts import FontConfiguration
-
-        font_config = FontConfiguration()
-        html = HTML(string=html_string)
-        css = CSS(string='''
-            @page { size: A4; margin: 1.5cm; }
-            body { font-family: Arial, sans-serif; direction: rtl; }
-        ''', font_config=font_config)
-
-        pdf = html.write_pdf(stylesheets=[css], font_config=font_config)
-
-        response = HttpResponse(pdf, content_type='application/pdf')
-        response['Content-Disposition'] = f'inline; filename="project_{project.code}_report.pdf"'
-        return response
-    except ImportError:
-        return HttpResponse(html_string)
+    return render_pdf(request, 'projects/project_report_pdf.html',
+                      {'project': project, **statement},
+                      f'project_{project.code}_report.pdf')

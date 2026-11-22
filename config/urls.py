@@ -28,6 +28,7 @@ urlpatterns = [
     path('payments/', include('apps.payments.urls', namespace='payments')),
     path('accounting/', include('apps.accounting.urls', namespace='accounting')),
     path('documents/', include('apps.core.urls', namespace='core')),
+    path('reports/', include('apps.reports.urls', namespace='reports')),
 ]
 
 # Development only

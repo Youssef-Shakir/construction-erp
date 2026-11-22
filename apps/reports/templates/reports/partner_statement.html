@@ -1,0 +1,108 @@
+{% extends "base.html" %}{% load erp_extras %}
+{% block title %}{{ statement.title }} - {{ partner.name }}{% endblock %}
+{% block page_title %}{{ statement.title }}: {{ partner.name }}{% endblock %}
+
+{% block breadcrumb %}
+<nav class="breadcrumb">
+    <a href="{% url 'reports:statements' %}?type={{ partner.type }}">كشوف الحساب</a>
+    <span class="separator">/</span>
+    <a href="{% url 'core:partner_detail' partner.pk %}">{{ partner.name }}</a>
+</nav>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl">
+    <div class="panel p-4 mb-4">
+        <form method="get" class="flex items-end gap-3 flex-wrap">
+            <div>
+                <label class="form-label">من تاريخ</label>
+                <input type="date" name="from" value="{{ date_from|date:'Y-m-d' }}" class="form-input">
+            </div>
+            <div>
+                <label class="form-label">إلى تاريخ</label>
+                <input type="date" name="to" value="{{ date_to|date:'Y-m-d' }}" class="form-input">
+            </div>
+            <div>
+                <label class="form-label">المشروع</label>
+                <select name="project" class="form-select">
+                    <option value="">كل المشاريع</option>
+                    {% for p in projects %}<option value="{{ p.pk }}" {% if project and project.pk == p.pk %}selected{% endif %}>{{ p.code }} - {{ p.name }}</option>{% endfor %}
+                </select>
+            </div>
+            <button type="submit" class="btn btn-primary">عرض</button>
+            <a href="{% url 'reports:partner_statement_pdf' partner.pk %}?{{ query }}" target="_blank" class="btn btn-secondary">طباعة / PDF</a>
+        </form>
+    </div>
+
+    <div class="financial-strip mb-4">
+        <div class="financial-strip-item">
+            <div class="financial-strip-label">الرصيد الافتتاحي</div>
+            <div class="financial-strip-value money">{{ statement.opening|amount }}</div>
+        </div>
+        <div class="financial-strip-item">
+            <div class="financial-strip-label">مدين</div>
+            <div class="financial-strip-value money">{{ statement.total_debit|amount }}</div>
+        </div>
+        <div class="financial-strip-item">
+            <div class="financial-strip-label">دائن</div>
+            <div class="financial-strip-value money">{{ statement.total_credit|amount }}</div>
+        </div>
+        <div class="financial-strip-item">
+            <div class="financial-strip-label">الرصيد الختامي</div>
+            <div class="financial-strip-value money {% if statement.closing > 0 %}text-orange-600{% else %}text-green-600{% endif %}">{{ statement.closing|amount }}</div>
+            <div class="text-xs text-gray-500">{{ statement.closing_meaning }}</div>
+        </div>
+    </div>
+
+    <div class="panel mb-6">
+        <table class="data-table">
+            <thead>
+                <tr><th>التاريخ</th><th>المستند</th><th>البيان</th><th>المشروع</th>
+                    <th class="text-left">مدين</th><th class="text-left">دائن</th><th class="text-left">الرصيد</th></tr>
+            </thead>
+            <tbody>
+                <tr class="bg-gray-50"><td>{{ date_from|date:"Y-m-d"|default:"" }}</td><td></td><td>رصيد افتتاحي</td><td></td><td></td><td></td><td class="money font-semibold">{{ statement.opening|amount }}</td></tr>
+                {% for row in statement.rows %}
+                <tr>
+                    <td>{{ row.date|date:"Y-m-d" }}</td>
+                    <td class="font-mono">{{ row.number }}</td>
+                    <td>{{ row.description }}</td>
+                    <td class="font-mono">{{ row.project }}</td>
+                    <td class="money">{% if row.debit %}{{ row.debit|amount }}{% endif %}</td>
+                    <td class="money">{% if row.credit %}{{ row.credit|amount }}{% endif %}</td>
+                    <td class="money">{{ row.balance|amount }}</td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="7" class="text-gray-500">لا توجد حركات في هذه الفترة</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    {% if advance_rows %}
+    <h3 class="font-semibold mb-2">ملخص السلف</h3>
+    <div class="panel">
+        <table class="data-table">
+            <thead><tr><th>السلفة</th><th>التاريخ</th><th>المشروع</th><th class="text-left">المبلغ</th><th class="text-left">المصروف</th><th class="text-left">المردود</th><th class="text-left">المتبقي</th><th></th></tr></thead>
+            <tbody>
+            {% for r in advance_rows %}
+                <tr>
+                    <td><a class="text-primary-600 hover:underline font-mono" href="{% url 'advances:detail' r.advance.pk %}">{{ r.advance.advance_number }}</a></td>
+                    <td>{{ r.advance.date|date:"Y-m-d" }}</td>
+                    <td>{{ r.advance.project.code }}</td>
+                    <td class="money">{{ r.amount|amount }}</td>
+                    <td class="money">{{ r.expenses|amount }}</td>
+                    <td class="money">{{ r.returned|amount }}</td>
+                    <td class="money {% if r.remaining > 0 %}text-orange-600{% endif %}">{{ r.remaining|amount }}</td>
+                    <td><a href="{% url 'reports:advance_statement_pdf' r.advance.pk %}" target="_blank" class="text-primary-600 hover:underline">PDF</a></td>
+                </tr>
+            {% endfor %}
+            </tbody>
+            <tfoot><tr class="font-semibold"><td colspan="3">الإجمالي</td>
+                <td class="money">{{ advance_totals.amount|amount }}</td><td class="money">{{ advance_totals.expenses|amount }}</td>
+                <td class="money">{{ advance_totals.returned|amount }}</td><td class="money">{{ advance_totals.remaining|amount }}</td><td></td></tr></tfoot>
+        </table>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

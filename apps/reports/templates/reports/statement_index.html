@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}كشوف الحساب{% endblock %}
+{% block page_title %}كشوف الحساب{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl">
+    <div class="tabs mb-4">
+        <a href="?type=customer" class="tab {% if partner_type == 'customer' %}active{% endif %}">العملاء</a>
+        <a href="?type=supplier" class="tab {% if partner_type == 'supplier' %}active{% endif %}">الموردين</a>
+        <a href="?type=employee" class="tab {% if partner_type == 'employee' %}active{% endif %}">السلف (الموظفين)</a>
+    </div>
+
+    <div class="panel">
+        {% if partners %}
+        <table class="data-table">
+            <thead><tr><th>الرمز</th><th>الاسم</th><th></th></tr></thead>
+            <tbody>
+            {% for p in partners %}
+                <tr>
+                    <td class="font-mono">{{ p.code }}</td>
+                    <td><a href="{% url 'reports:partner_statement' p.pk %}" class="text-primary-600 hover:underline">{{ p.name }}</a></td>
+                    <td class="text-left whitespace-nowrap">
+                        <a href="{% url 'reports:partner_statement' p.pk %}" class="btn btn-secondary btn-sm">عرض الكشف</a>
+                        <a href="{% url 'reports:partner_statement_pdf' p.pk %}" class="btn btn-secondary btn-sm" target="_blank">PDF</a>
+                    </td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p class="p-4 text-gray-500">لا يوجد أسماء من هذا النوع.</p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

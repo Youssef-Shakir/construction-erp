@@ -73,6 +73,16 @@ class CompanySettings(models.Model):
     tax_number = models.CharField('الرقم الضريبي', max_length=50, blank=True)
     logo = models.ImageField('الشعار', upload_to='company/', blank=True, null=True)
 
+    # Printed documents (invoices, statements, vouchers): editable from company settings
+    pdf_accent_color = models.CharField('لون المستندات', max_length=7, default='#1d4ed8')
+    pdf_header_note = models.CharField('سطر تحت اسم الشركة', max_length=255, blank=True,
+                                       help_text='مثال: مقاولات عامة - سجل تجاري 123456')
+    invoice_terms = models.TextField('شروط / بيانات الدفع في الفاتورة', blank=True,
+                                     help_text='تظهر أسفل الفاتورة: الحساب البنكي، شروط الدفع...')
+    pdf_footer_text = models.CharField('تذييل المستندات', max_length=255, blank=True,
+                                       help_text='سطر في أسفل كل صفحة')
+    pdf_show_signatures = models.BooleanField('إظهار خانات التوقيع', default=True)
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -109,7 +119,7 @@ class Partner(AuditMixin, models.Model):
         ('employee', 'موظف'),
     ]
 
-    code = models.CharField('الرمز', max_length=20, unique=True)
+    code = models.CharField('الرمز', max_length=20, unique=True, blank=True)
     name = models.CharField('الاسم', max_length=255)
     type = models.CharField('النوع', max_length=20, choices=PARTNER_TYPES)
     email = models.EmailField('البريد الإلكتروني', blank=True)
@@ -140,6 +150,15 @@ class Partner(AuditMixin, models.Model):
 
     def __str__(self):
         return f'{self.code} - {self.name}'
+
+    CODE_PREFIX = {'customer': 'CUS', 'supplier': 'SUP', 'employee': 'EMP'}
+
+    def save(self, *args, **kwargs):
+        # Blank code -> next one for the type (CUS-0001, SUP-0001, EMP-0001)
+        if not self.code:
+            from .sequences import next_document_number
+            self.code = next_document_number(self.CODE_PREFIX.get(self.type, 'PRT'), Partner, 'code', width=4)
+        super().save(*args, **kwargs)
 
     def get_type_display_ar(self):
         """Return type in Arabic."""

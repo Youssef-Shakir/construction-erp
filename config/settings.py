@@ -46,6 +46,7 @@ INSTALLED_APPS = [
     'apps.invoicing',
     'apps.payments',
     'apps.dashboard',
+    'apps.reports',
 ]
 
 MIDDLEWARE = [
@@ -236,6 +237,9 @@ LOGGING = {
     'root': {'handlers': ['console'], 'level': config('LOG_LEVEL', default='INFO')},
     'loggers': {
         'django.request': {'handlers': ['console'], 'level': 'WARNING', 'propagate': False},
+        # PDF rendering: only real problems, not every layout step
+        'weasyprint': {'handlers': ['console'], 'level': 'ERROR', 'propagate': False},
+        'fontTools': {'handlers': ['console'], 'level': 'ERROR', 'propagate': False},
     },
 }
 

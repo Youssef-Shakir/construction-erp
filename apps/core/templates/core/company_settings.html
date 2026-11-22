@@ -96,6 +96,29 @@
             </div>
         </div>
 
+        <div class="form-section">
+            <h3 class="form-section-title">شكل المستندات المطبوعة (PDF)</h3>
+            <p class="text-xs text-gray-500 mb-3">تُطبّق على الفواتير وسندات القبض والصرف وكشوف الحساب وتقارير المشاريع.</p>
+            <div class="form-grid">
+                <div class="form-group">
+                    <label class="form-label">{{ form.pdf_accent_color.label }}</label>
+                    {{ form.pdf_accent_color }}
+                    {% if form.pdf_accent_color.errors %}<p class="form-error">{{ form.pdf_accent_color.errors.0 }}</p>{% endif %}
+                </div>
+                <div class="form-group flex items-end">
+                    <label class="inline-flex items-center gap-2">{{ form.pdf_show_signatures }} {{ form.pdf_show_signatures.label }}</label>
+                </div>
+                {% for field in form %}{% if field.name == 'pdf_header_note' or field.name == 'invoice_terms' or field.name == 'pdf_footer_text' %}
+                <div class="form-group col-span-2">
+                    <label class="form-label">{{ field.label }}</label>
+                    {{ field }}
+                    {% if field.help_text %}<p class="text-xs text-gray-500 mt-1">{{ field.help_text }}</p>{% endif %}
+                    {% if field.errors %}<p class="form-error">{{ field.errors.0 }}</p>{% endif %}
+                </div>
+                {% endif %}{% endfor %}
+            </div>
+        </div>
+
         <div class="form-actions">
             <button type="submit" class="btn btn-primary">
                 حفظ الإعدادات

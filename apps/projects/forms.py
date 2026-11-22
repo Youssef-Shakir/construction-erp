@@ -4,6 +4,7 @@ Forms for projects app.
 from django import forms
 from .models import Project
 from apps.core.models import Partner
+from apps.core.forms import enable_quick_create
 
 
 class ProjectForm(forms.ModelForm):
@@ -33,3 +34,4 @@ class ProjectForm(forms.ModelForm):
             type='customer',
             is_active=True
         ).order_by('name')
+        enable_quick_create(self.fields['customer'], 'customer')

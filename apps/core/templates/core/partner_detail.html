@@ -24,6 +24,8 @@
             <span class="badge badge-draft">{{ partner.get_type_display_ar }}</span>
         </div>
         <div class="flex items-center gap-2">
+            <a href="{% url 'reports:partner_statement' partner.pk %}" class="btn btn-primary btn-sm">{% if partner.type == 'employee' %}كشف السلف{% else %}كشف حساب{% endif %}</a>
+            <a href="{% url 'reports:partner_statement_pdf' partner.pk %}" class="btn btn-secondary btn-sm" target="_blank">PDF</a>
             <a href="{% url 'core:partner_edit' partner.pk %}" class="btn btn-secondary btn-sm">تعديل</a>
         </div>
     </div>

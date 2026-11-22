@@ -1,6 +1,7 @@
 """
 Views for payments app.
 """
+from apps.core.navigation import project_from_query, redirect_next
 from decimal import Decimal
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
@@ -79,12 +80,13 @@ def payment_create(request, direction='inbound'):
             _save_attachments(request, Payment, payment.pk)
 
             messages.success(request, f'تم إنشاء الدفعة {payment.payment_number}')
-            return redirect('payments:detail', pk=payment.pk)
+            return redirect_next(request, 'payments:detail', pk=payment.pk)
     else:
-        form = PaymentForm(
-            initial={'date': timezone.now().date(), 'direction': direction},
-            direction=direction
-        )
+        initial = {'date': timezone.now().date(), 'direction': direction}
+        project = project_from_query(request)
+        if project and direction == 'inbound':
+            initial['partner'] = project.customer   # payment from the project's customer
+        form = PaymentForm(initial=initial, direction=direction)
 
     title = 'استلام دفعة' if direction == 'inbound' else 'صرف دفعة'
 
@@ -274,3 +276,18 @@ def payment_deallocate(request, pk, allocation_pk):
         messages.success(request, 'تم إلغاء التخصيص')
 
     return redirect('payments:detail', pk=pk)
+
+
+@login_required
+def payment_pdf(request, pk):
+    """Receipt voucher (سند قبض) or payment voucher (سند صرف) as PDF."""
+    from apps.core.pdf import render_pdf
+    payment = get_object_or_404(Payment.objects.select_related('partner', 'account'), pk=pk)
+    allocations = []
+    for alloc in payment.allocations.select_related('content_type'):
+        doc = alloc.document
+        number = getattr(doc, 'invoice_number', None) or getattr(doc, 'bill_number', '') if doc else ''
+        allocations.append({'number': number, 'amount': alloc.amount})
+    return render_pdf(request, 'payments/payment_pdf.html',
+                      {'payment': payment, 'allocations': allocations},
+                      f'{payment.payment_number}.pdf')

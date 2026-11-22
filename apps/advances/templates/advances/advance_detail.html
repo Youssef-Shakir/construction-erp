@@ -18,7 +18,11 @@
             <span class="badge badge-cancelled">ملغي</span>
             {% endif %}
         </div>
-        <div class="flex items-center gap-2">
+        <div class="flex items-center gap-2 flex-wrap">
+            {% if advance.status != 'draft' %}
+            <a href="{% url 'reports:advance_statement_pdf' advance.pk %}" class="btn btn-secondary btn-sm" target="_blank">كشف السلفة PDF</a>
+            <a href="{% url 'reports:partner_statement' advance.recipient.pk %}" class="btn btn-secondary btn-sm">كل سلف {{ advance.recipient.name }}</a>
+            {% endif %}
             {% if advance.status == 'draft' %}
                 <a href="{% url 'advances:edit' advance.pk %}" class="btn btn-secondary btn-sm">تعديل</a>
                 {% if can_post %}

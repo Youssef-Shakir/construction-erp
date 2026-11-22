@@ -1,0 +1,42 @@
+{% extends "pdf/base.html" %}{% load erp_extras %}
+{% block title %}{{ payment.payment_number }}{% endblock %}
+{% block doc_title %}{% if payment.direction == 'inbound' %}سند قبض{% else %}سند صرف{% endif %}{% endblock %}
+{% block doc_number %}{{ payment.payment_number }}{% endblock %}
+{% block doc_subtitle %}{% if payment.status == 'draft' %}<span class="stamp neg">مسودة</span>{% elif payment.status == 'cancelled' %}<span class="stamp neg">ملغى</span>{% endif %}{% endblock %}
+
+{% block content %}
+<table class="boxes"><tr>
+  <td>
+    <div class="box-title">{% if payment.direction == 'inbound' %}استلمنا من{% else %}صُرف إلى{% endif %}</div>
+    <strong>{{ payment.partner.name }}</strong>
+    {% if payment.partner.tax_number %}<div class="muted">الرقم الضريبي: <span class="num">{{ payment.partner.tax_number }}</span></div>{% endif %}
+  </td>
+  <td>
+    <table class="kv">
+      <tr><td class="k">التاريخ</td><td><span class="num">{{ payment.date|date:"Y-m-d" }}</span></td></tr>
+      <tr><td class="k">طريقة الدفع</td><td>{{ payment.account.name }}</td></tr>
+      {% if payment.reference %}<tr><td class="k">المرجع</td><td><span class="num">{{ payment.reference }}</span></td></tr>{% endif %}
+    </table>
+  </td>
+</tr></table>
+
+<table class="totals" style="width:100%">
+  <tr class="grand"><td>المبلغ</td><td class="num">{{ payment.amount|amount }} {{ company.currency_symbol }}</td></tr>
+</table>
+
+{% if payment.memo %}<div class="note"><div class="note-title">البيان</div>{{ payment.memo|linebreaksbr }}</div>{% endif %}
+
+{% if allocations %}
+<h2 class="section">{% if payment.direction == 'inbound' %}سداد الفواتير{% else %}سداد فواتير المورد{% endif %}</h2>
+<table class="lines">
+  <thead><tr><th>الفاتورة</th><th class="num" style="width:40mm">المبلغ المخصص</th></tr></thead>
+  <tbody>{% for a in allocations %}<tr><td class="num" style="text-align:right">{{ a.number }}</td><td class="num">{{ a.amount|amount }}</td></tr>{% endfor %}</tbody>
+</table>
+{% endif %}
+{% endblock %}
+
+{% block signature_boxes %}
+<td><div class="line">المحاسب</div></td>
+<td><div class="line">المدير</div></td>
+<td><div class="line">{% if payment.direction == 'inbound' %}الدافع{% else %}المستلم{% endif %}</div></td>
+{% endblock %}

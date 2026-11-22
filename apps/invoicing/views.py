@@ -14,6 +14,7 @@ from datetime import timedelta
 from django.contrib.contenttypes.models import ContentType
 
 from apps.core.attachments import attach_from_request
+from apps.core.navigation import project_from_query, redirect_next
 from apps.accounts.permissions import can_post_document, posting_permission_required
 from apps.accounting.posting import PostingError
 from apps.core.models import Attachment, CompanySettings
@@ -89,13 +90,17 @@ def invoice_create(request):
             _save_attachments(request, Invoice, invoice.pk)
 
             messages.success(request, f'تم إنشاء الفاتورة {invoice.invoice_number}')
-            return redirect('invoicing:detail', pk=invoice.pk)
+            return redirect_next(request, 'invoicing:detail', pk=invoice.pk)
     else:
         # Default due date: 30 days from today
-        form = InvoiceForm(initial={
+        initial = {
             'date': timezone.now().date(),
             'due_date': timezone.now().date() + timedelta(days=30),
-        })
+        }
+        project = project_from_query(request)
+        if project:
+            initial.update(project=project, customer=project.customer)
+        form = InvoiceForm(initial=initial)
 
     return render(request, 'invoicing/invoice_form.html', {
         'form': form,
@@ -254,12 +259,16 @@ def bill_create(request):
             _save_attachments(request, Bill, bill.pk)
 
             messages.success(request, f'تم إنشاء فاتورة المورد {bill.bill_number}')
-            return redirect('bills:detail', pk=bill.pk)
+            return redirect_next(request, 'bills:detail', pk=bill.pk)
     else:
-        form = BillForm(initial={
+        initial = {
             'date': timezone.now().date(),
             'due_date': timezone.now().date() + timedelta(days=30),
-        })
+        }
+        project = project_from_query(request)
+        if project:
+            initial['project'] = project
+        form = BillForm(initial=initial)
 
     return render(request, 'invoicing/bill_form.html', {
         'form': form,
@@ -360,42 +369,11 @@ def bill_cancel(request, pk):
 
 @login_required
 def invoice_pdf(request, pk):
-    """Generate PDF for invoice."""
-    invoice = get_object_or_404(
-        Invoice.objects.select_related('project', 'customer'),
-        pk=pk
-    )
-    company = CompanySettings.get_settings()
-
-    # Render HTML template
-    html_string = render_to_string('invoicing/invoice_pdf.html', {
-        'invoice': invoice,
-        'company': company,
-    })
-
-    # Try to use weasyprint, fallback to HTML
-    try:
-        from weasyprint import HTML, CSS
-        from weasyprint.text.fonts import FontConfiguration
-
-        font_config = FontConfiguration()
-        html = HTML(string=html_string)
-        css = CSS(string='''
-            @page { size: A4; margin: 1.5cm; }
-            body { font-family: Arial, sans-serif; direction: rtl; }
-        ''', font_config=font_config)
-
-        pdf = html.write_pdf(stylesheets=[css], font_config=font_config)
-
-        response = HttpResponse(pdf, content_type='application/pdf')
-        response['Content-Disposition'] = f'inline; filename="invoice_{invoice.invoice_number}.pdf"'
-        return response
-    except ImportError:
-        # Fallback: return printable HTML page
-        return render(request, 'invoicing/invoice_pdf.html', {
-            'invoice': invoice,
-            'company': company,
-        })
+    """Invoice as PDF (layout and texts editable in company settings)."""
+    from apps.core.pdf import render_pdf
+    invoice = get_object_or_404(Invoice.objects.select_related('project', 'customer'), pk=pk)
+    return render_pdf(request, 'invoicing/invoice_pdf.html', {'invoice': invoice},
+                      f'invoice_{invoice.invoice_number}.pdf')
 
 
 @login_required

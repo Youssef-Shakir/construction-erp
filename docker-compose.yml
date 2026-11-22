@@ -6,8 +6,8 @@
 #   docker compose --profile scanner up -d scans      # scanner folder importer
 #
 # Production: add an overlay through COMPOSE_FILE in .env
-#   docker-compose.prod.yml   - own server, HTTPS via Caddy
-#   docker-compose.tunnel.yml - behind an existing Cloudflare Tunnel
+#   docker-compose.caddy.yml   - own server, HTTPS via Caddy
+#   docker-compose.prod.yml (standalone) - VPS behind the Cloudflare Tunnel, existing MinIO
 
 name: construction-erp   # stable container/volume names whatever the folder is called
 
@@ -22,7 +22,7 @@ x-app: &app
     DB_PORT: "5432"
     USE_S3: "True"
     AWS_S3_ENDPOINT_URL: http://minio:9000
-    # Plain HTTP on localhost; docker-compose.prod.yml turns these on behind HTTPS
+    # Plain HTTP on localhost; docker-compose.caddy.yml turns these on behind HTTPS
     SECURE_SSL_REDIRECT: ${SECURE_SSL_REDIRECT:-False}
     SECURE_COOKIES: ${SECURE_COOKIES:-False}
   security_opt:

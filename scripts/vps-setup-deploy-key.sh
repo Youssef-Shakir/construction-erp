@@ -90,7 +90,7 @@ cat <<EOF
 Next steps:
   cd $APP_DIR
   cp .env.docker.example .env && nano .env      # set DOMAIN, passwords (openssl rand -base64 36)
-  docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+  docker compose -f docker-compose.yml -f docker-compose.caddy.yml up -d --build
 Later updates:
   $APP_DIR/scripts/update.sh
 EOF

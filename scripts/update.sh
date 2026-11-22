@@ -6,7 +6,7 @@
 #   scripts/update.sh --force    # rebuild even if there are no new commits
 #
 # Safe to run from cron. Uses a lock so two updates never overlap.
-# Compose files come from COMPOSE_FILE in .env (e.g. docker-compose.yml:docker-compose.tunnel.yml).
+# Compose files come from COMPOSE_FILE in .env (e.g. docker-compose.prod.yml).
 # Database migrations run automatically when the new erp container starts
 # (RUN_MIGRATIONS=1). If the new version fails its health check, the CODE is
 # rolled back automatically; a migration is NOT reversed - restore the backup

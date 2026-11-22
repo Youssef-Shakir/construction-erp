@@ -22,7 +22,7 @@ On first start `erp` applies migrations and creates the admin from
 **Production server (HTTPS):** point the DNS of `DOMAIN` to the server, open ports 80/443, then
 
 ```bash
-docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+docker compose -f docker-compose.yml -f docker-compose.caddy.yml up -d --build
 ```
 
 Caddy obtains and renews the certificate; only ports 80/443 are exposed.
@@ -37,18 +37,15 @@ MinIO console is on `127.0.0.1:9001` (use an SSH tunnel from outside).
 | Django shell | `docker compose exec erp python manage.py shell` |
 | Backup DB | `docker compose exec -T db pg_dump -U $DB_USER -Fc $DB_NAME > erp-$(date +%F).dump` |
 | Backup files | `docker compose run --rm --entrypoint sh minio-init -c 'mc alias set l http://minio:9000 $MINIO_ROOT_USER $MINIO_ROOT_PASSWORD && mc mirror l/$AWS_STORAGE_BUCKET_NAME /backup'` (mount a `/backup` volume) |
-| Update | `git pull && docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build` |
+| Update | `git pull && docker compose -f docker-compose.yml -f docker-compose.caddy.yml up -d --build` |
 
-**Behind a Cloudflare Tunnel** (no open ports, HTTPS by Cloudflare): in `.env` set
-`COMPOSE_FILE=docker-compose.yml:docker-compose.tunnel.yml` and `TUNNEL_NETWORK` to the
-Docker network the `cloudflared` container is on. In Cloudflare Zero Trust -> Networks ->
-Tunnels -> your tunnel -> Public hostnames, route the domain to `http://codia-erp:8000`.
-
-**Existing MinIO / S3 server** (no MinIO container on this machine): append
-`:docker-compose.external-s3.yml` to `COMPOSE_FILE` and fill block A in `.env`
-(`STORAGE_BACKEND=s3`, `S3_ENDPOINT_URL`, `S3_BUCKET`, `S3_ACCESS_KEY`, `S3_SECRET_KEY`,
-`S3_REGION`, `S3_PREFIX`). Use a key that can only read/write that bucket, and keep the
-bucket (or at least the prefix) **private** - downloads always go through Django.
+**VPS behind the Cloudflare Tunnel, existing MinIO** (codia.donialink.com): the
+standalone `docker-compose.prod.yml` runs only `db` + `erp`; the app joins the tunnel's
+Docker network `ilumina` at the fixed address `172.20.0.20`. In `.env` set
+`COMPOSE_FILE=docker-compose.prod.yml` and fill block A (`STORAGE_BACKEND=s3`, `S3_*`).
+Cloudflare Zero Trust -> Tunnels -> Public hostnames: `codia.donialink.com -> HTTP -> 172.20.0.20:8000`.
+Use an S3 key limited to the bucket and keep the bucket **private** - downloads always go
+through Django.
 
 **First deployment on a VPS:** `scripts/vps-setup-deploy-key.sh` (run as the app user)
 creates a read-only GitHub deploy key and clones the repo; afterwards every update is

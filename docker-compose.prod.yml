@@ -1,41 +1,67 @@
-# Production overlay: HTTPS with automatic certificates (Caddy) in front of the app.
+# Production on the VPS (codia.donialink.com). In .env:  COMPOSE_FILE=docker-compose.prod.yml
+#   docker compose up -d --build        (or scripts/update.sh)
 #
-#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
-#
-# Needs DOMAIN in .env and ports 80/443 open to the server.
+# Ingress: the Cloudflare Tunnel container on the VPS (network "ilumina", 172.20.0.0/24,
+# cloudflared at 172.20.0.5). In Cloudflare Zero Trust -> Tunnels -> Public hostnames:
+#   codia.donialink.com  ->  HTTP  ->  172.20.0.20:8000
+# Files go to the existing MinIO (S3_* in .env); no MinIO runs here.
+# The database stays on this project's own network, out of reach of the other stacks.
+name: construction-erp
+
 services:
-  erp:
-    ports: !reset []                 # only Caddy is exposed
+  db:
+    image: postgres:16.9-alpine
+    restart: unless-stopped
     environment:
-      SECURE_SSL_REDIRECT: "True"
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  erp:
+    build:
+      context: .
+      target: production
+    image: construction-erp:latest
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DB_HOST: db
+      DB_PORT: "5432"
+      RUN_MIGRATIONS: "1"
+      # HTTPS ends at Cloudflare ("Always Use HTTPS"); the tunnel speaks plain HTTP to us
+      SECURE_SSL_REDIRECT: "False"
       SECURE_COOKIES: "True"
+      FORWARDED_ALLOW_IPS: 172.20.0.5     # trust X-Forwarded-* only from cloudflared
+    networks:
+      default:
+      ilumina:
+        ipv4_address: 172.20.0.20
+    depends_on:
+      db:
+        condition: service_healthy
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /home/app:uid=1001,gid=1001,mode=0700
     deploy:
       resources:
         limits:
-          memory: 1g
+          memory: 768m
 
-  scans:
-    environment:
-      SECURE_SSL_REDIRECT: "True"
-      SECURE_COOKIES: "True"
-
-  caddy:
-    image: caddy:2.10-alpine
-    depends_on:
-      erp:
-        condition: service_healthy
-    environment:
-      DOMAIN: ${DOMAIN}
-    ports:
-      - "80:80"
-      - "443:443"
-      - "443:443/udp"
-    volumes:
-      - ./docker/Caddyfile:/etc/caddy/Caddyfile:ro
-      - caddy_data:/data
-      - caddy_config:/config
-    restart: unless-stopped
+networks:
+  ilumina:
+    external: true  # the Cloudflare Tunnel's network, created by the Ilumina stack
 
 volumes:
-  caddy_data:
-  caddy_config:
+  pgdata:

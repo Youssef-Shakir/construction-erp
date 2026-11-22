@@ -6,6 +6,7 @@ from .models import CashAdvance, AdvanceReturn
 from apps.core.models import Partner
 from apps.core.forms import enable_quick_create
 from apps.projects.models import Project
+from apps.projects.forms import selectable_projects
 
 
 class CashAdvanceForm(forms.ModelForm):
@@ -24,7 +25,7 @@ class CashAdvanceForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields['project'].queryset = Project.objects.filter(status='active')
+        self.fields['project'].queryset = selectable_projects(self)
         self.fields['recipient'].queryset = Partner.objects.filter(
             type='employee',
             is_active=True

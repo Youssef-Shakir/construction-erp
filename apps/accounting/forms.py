@@ -8,6 +8,7 @@ from django.forms import inlineformset_factory
 from .models import Account, AccountType, Journal, JournalEntry, JournalLine
 from apps.core.models import Partner
 from apps.projects.models import Project
+from apps.projects.forms import selectable_projects
 
 
 class AccountForm(forms.ModelForm):
@@ -86,7 +87,7 @@ class JournalLineForm(forms.ModelForm):
         self.fields['partner'].queryset = Partner.objects.filter(is_active=True)
         self.fields['partner'].required = False
 
-        self.fields['project'].queryset = Project.objects.filter(status='active')
+        self.fields['project'].queryset = selectable_projects(self)
         self.fields['project'].required = False
 
     def clean(self):

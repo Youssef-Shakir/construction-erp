@@ -86,6 +86,7 @@ def payment_create(request, direction='inbound'):
         project = project_from_query(request)
         if project and direction == 'inbound':
             initial['partner'] = project.customer   # payment from the project's customer
+            initial['memo'] = f'دفعة عن مشروع {project.code} - {project.name}'
         form = PaymentForm(initial=initial, direction=direction)
 
     title = 'استلام دفعة' if direction == 'inbound' else 'صرف دفعة'

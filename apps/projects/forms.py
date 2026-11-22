@@ -2,9 +2,33 @@
 Forms for projects app.
 """
 from django import forms
+from django.db import models
 from .models import Project
 from apps.core.models import Partner
 from apps.core.forms import enable_quick_create
+
+
+def selectable_projects(form, field='project'):
+    """
+    Active projects, plus the project this form is about even if it is
+    completed / on hold: the one it was opened from (?project=), the one the
+    document already has (edit), or the one submitted. Without this a form
+    opened from a completed project's page would silently lose the project.
+    """
+    keep = set()
+    initial = form.initial.get(field)
+    if initial:
+        keep.add(getattr(initial, 'pk', initial))
+    instance_pk = getattr(form.instance, f'{field}_id', None)
+    if instance_pk:
+        keep.add(instance_pk)
+    submitted = form.data.get(form.add_prefix(field)) if form.is_bound else None
+    if submitted and str(submitted).isdigit():
+        keep.add(int(submitted))
+    q = models.Q(status='active')
+    if keep:
+        q |= models.Q(pk__in=keep) & ~models.Q(status='cancelled')
+    return Project.objects.filter(q).select_related('customer').order_by('code')
 
 
 class ProjectForm(forms.ModelForm):

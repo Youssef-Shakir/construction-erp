@@ -6,6 +6,7 @@ from .models import Expense, ExpenseBatch, PaperReceipt
 from apps.core.models import Partner
 from apps.core.forms import enable_quick_create
 from apps.projects.models import Project
+from apps.projects.forms import selectable_projects
 from apps.advances.models import CashAdvance
 from apps.accounting.models import Account
 
@@ -30,7 +31,7 @@ class ExpenseForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        self.fields['project'].queryset = Project.objects.filter(status='active')
+        self.fields['project'].queryset = selectable_projects(self)
         self.fields['project'].required = False
 
         self.fields['advance'].queryset = CashAdvance.objects.filter(
@@ -73,7 +74,7 @@ class ExpenseLineForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
 
         self.fields['date'].required = False
-        self.fields['project'].queryset = Project.objects.filter(status='active')
+        self.fields['project'].queryset = selectable_projects(self)
         self.fields['project'].required = False
         self.fields['account'].queryset = Account.objects.filter(
             account_type__code='expense',

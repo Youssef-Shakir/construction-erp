@@ -6,6 +6,7 @@ from .models import Invoice, Bill
 from apps.core.models import Partner
 from apps.core.forms import enable_quick_create
 from apps.projects.models import Project
+from apps.projects.forms import selectable_projects
 from apps.accounting.models import Account
 
 
@@ -26,7 +27,7 @@ class InvoiceForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields['project'].queryset = Project.objects.filter(status='active')
+        self.fields['project'].queryset = selectable_projects(self)
         self.fields['customer'].queryset = Partner.objects.filter(
             type='customer',
             is_active=True
@@ -53,7 +54,7 @@ class BillForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields['project'].queryset = Project.objects.filter(status='active')
+        self.fields['project'].queryset = selectable_projects(self)
         self.fields['project'].required = False
         self.fields['supplier'].queryset = Partner.objects.filter(
             type='supplier',

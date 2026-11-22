@@ -217,6 +217,29 @@ class TestProjectActions:
         })
         assert resp.status_code == 302 and resp['Location'] == back
 
+    def test_completed_project_still_prefilled(self, books, boss):
+        """Forms opened from a completed project's page keep that project selected."""
+        project = books['project']
+        project.status = 'completed'
+        project.save()
+        selected = f'<option value="{project.pk}" selected>'
+        for name in ['expenses:create', 'invoicing:create', 'bills:create', 'advances:create']:
+            html = boss.get(reverse(name) + f'?project={project.pk}').content.decode()
+            assert selected in html, name
+        html = boss.get(reverse('invoicing:create') + f'?project={project.pk}').content.decode()
+        assert f'<option value="{project.customer.pk}" selected>' in html
+
+        resp = boss.post(reverse('expenses:create') + f'?project={project.pk}', {
+            'date': TODAY, 'project': project.pk, 'account': books['materials'].pk,
+            'amount': '12.00', 'description': 'مشروع مكتمل',
+        })
+        assert resp.status_code == 302
+        assert Expense.objects.filter(project=project, description='مشروع مكتمل').exists()
+
+        # A plain "new expense" form still lists active projects only
+        form = boss.get(reverse('expenses:create')).context['form']
+        assert project not in form.fields['project'].queryset
+
     def test_next_must_be_on_this_site(self, books, boss):
         resp = boss.post(reverse('expenses:create') + '?next=https://evil.example/', {
             'date': TODAY, 'account': books['materials'].pk, 'amount': '5.00', 'description': 'x',
